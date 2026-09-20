@@ -71,6 +71,10 @@ export interface FiscalYear {
   endDate: string;
   totalStudents?: number;
   teacherCount: number;
+  subsidyRateKindergarten?: number; // อัตราเงินอุดหนุนรายหัวอนุบาล (บาท/คน)
+  subsidyRatePrimary?: number; // อัตราเงินอุดหนุนรายหัวประถม (บาท/คน)
+  subsidyRateSecondaryLower?: number; // อัตราเงินอุดหนุนรายหัวมัธยมต้น (บาท/คน)
+  subsidyRateSecondaryUpper?: number; // อัตราเงินอุดหนุนรายหัวมัธยมปลาย (บาท/คน)
   isProposalOpen?: boolean; // สถานะเปิด/ปิดรับการเสนอโครงการจากคุณครู
   proposalOpenDate?: string; // วันที่เริ่มเปิดรับข้อเสนอ
   proposalCloseDate?: string; // วันที่ปิดรับข้อเสนอ
@@ -81,8 +85,8 @@ export interface StudentLevel {
   id: number;
   schoolId: number;
   fiscalYearId: number;
-  gradeLevel: string; // อ.1, อ.2, อ.3, ป.1, ป.2, ป.3, ป.4, ป.5, ป.6
-  stage: 'อนุบาล' | 'ประถม';
+  gradeLevel: string; // อ.1, อ.2, อ.3, ป.1, ป.2, ป.3, ป.4, ป.5, ป.6, ม.1, ม.2, ม.3
+  stage: 'อนุบาล' | 'ประถม' | 'มัธยมต้น' | 'มัธยมปลาย';
   maleCount: number;
   femaleCount: number;
   totalCount: number;
@@ -254,6 +258,12 @@ export interface ProjectProposal {
   strategyAlignment: string;
   responsiblePerson: string;
   position?: string;
+  proposerName?: string;
+  proposerPosition?: string;
+  endorserName?: string;
+  endorserPosition?: string;
+  approverName?: string;
+  approverPosition?: string;
   rationale: string;
   objectives: string[];
   quantitativeTarget: string;

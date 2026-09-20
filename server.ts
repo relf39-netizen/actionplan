@@ -119,19 +119,138 @@ function generateFallbackProposal(params: {
   estimatedBudget?: number;
   duration?: string;
   specialFocus?: string;
+  proposerName?: string;
+  proposerPosition?: string;
+  endorserName?: string;
+  endorserPosition?: string;
+  approverName?: string;
+  approverPosition?: string;
 }) {
   const name = params.projectName?.trim() || 'โครงการยกระดับคุณภาพการจัดการศึกษาและพัฒนาศักยภาพผู้เรียน';
   const type = params.projectType || 'ใหม่';
   const dept = params.department || 'ฝ่ายวิชาการ';
-  const strat = params.strategyName || 'ยุทธศาสตร์ที่ 1 พัฒนาคุณภาพผู้เรียนตามมาตรฐานการศึกษาขั้นพื้นฐาน';
-  const target = params.targetGroup || 'นักเรียน ครู และบุคลากรทางการศึกษา';
-  const budget = Number(params.estimatedBudget) > 0 ? Number(params.estimatedBudget) : 25000;
+  const strat = params.strategyName || 'ยุทธศาสตร์ที่ 1 พัฒนาคุณภาพและมาตรฐานการศึกษาขั้นพื้นฐาน';
+  const target = params.targetGroup || 'นักเรียนและครูผู้สอนทุกคน';
+  const budget = Number(params.estimatedBudget) > 0 ? Number(params.estimatedBudget) : 30000;
   const dur = params.duration || 'ตลอดปีการศึกษา 2568 (16 พฤษภาคม 2568 - 31 มีนาคม 2569)';
-  const focus = params.specialFocus ? ` โดยเน้น ${params.specialFocus}` : '';
+  const focus = params.specialFocus?.trim() || '';
 
+  const proposer = params.proposerName?.trim() || 'นางสาวกนกพร ใจมั่น';
+  const propPos = params.proposerPosition?.trim() || 'ครูชำนาญการพิเศษ';
+  const endorser = params.endorserName?.trim() || 'นายพิเชษฐ์ ปัญญาวงศ์';
+  const endPos = params.endorserPosition?.trim() || `หัวหน้ากลุ่มงาน${dept}`;
+  const approver = params.approverName?.trim() || 'ดร.สมศักดิ์ พัฒนศึกษา';
+  const appPos = params.approverPosition?.trim() || 'ผู้อำนวยการโรงเรียน';
+
+  // Topic specific custom content
+  const isOnet = /onet|o-net|nt|ผลสัมฤทธิ์|ทดสอบ/i.test(name);
+  const isAiDigital = /ai|ปัญญาประดิษฐ์|ดิจิทัล|คอมพิวเตอร์|coding|เทคโนโลยี/i.test(name);
+  const isMorality = /คุณธรรม|จริยธรรม|สุจริต|วินัย|วิถีพุทธ|ประชาธิปไตย/i.test(name);
+  const isSafety = /ปลอดภัย|safety|สิ่งแวดล้อม|อาคาร|ซ่อมแซม|สุขาภิบาล/i.test(name);
+  const isAgriculture = /เกษตร|อาหารกลางวัน|พอเพียง|ปลูกผัก|สหกรณ์/i.test(name);
+  const isLanguage = /ภาษาอังกฤษ|ภาษาไทย|รักการอ่าน|english/i.test(name);
+
+  let rationaleText = `ตามพระราชบัญญัติการศึกษาแห่งชาติ พ.ศ. 2542 และที่แก้ไขเพิ่มเติม รวมถึงนโยบายและจุดเน้นของสำนักงานคณะกรรมการการศึกษาขั้นพื้นฐาน (สพฐ.) มุ่งเน้นการยกระดับคุณภาพการจัดการศึกษาให้ผู้เรียนมีสมรรถนะสำคัญตามหลักสูตรแกนกลาง มีทักษะในศตวรรษที่ 21 และมีคุณลักษณะอันพึงประสงค์ โรงเรียนจึงตระหนักถึงความสำคัญในการจัดทำ "${name}" ขึ้น เพื่อขับเคลื่อนการพัฒนาศักยภาพของ${target}อย่างเป็นระบบ ต่อเนื่อง และมีประสิทธิภาพ ${focus ? `โดยมุ่งเน้น${focus}` : ''} ตอบสนองต่อมาตรฐานการศึกษาของสถานศึกษาและทิศทางการพัฒนาการศึกษาชาติอย่างยั่งยืน`;
+
+  let objectivesList = [
+    `เพื่อส่งเสริมและพัฒนาศักยภาพของ${target} ให้สอดคล้องกับมาตรฐานการเรียนรู้ตามหลักสูตร`,
+    `เพื่อยกระดับผลสัมฤทธิ์และกระบวนการจัดการเรียนรู้เชิงรุก (Active Learning) ให้เกิดประสิทธิภาพสูงสุด`,
+    `เพื่อส่งเสริมความร่วมมือระหว่างครู บุคลากร และผู้มีส่วนเกี่ยวข้องในการพัฒนาสถานศึกษาอย่างยั่งยืน`,
+  ];
+
+  let pdcaList = [
+    {
+      phase: '1. ขั้นเตรียมการ (Plan)',
+      description: `ประชุมวางแผน ชี้แจงคณะทำงาน แต่งตั้งคณะกรรมการดำเนินงาน "${name}" และจัดทำแนวปฏิบัติ`,
+      duration: 'พฤษภาคม 2568',
+      responsible: proposer,
+    },
+    {
+      phase: '2. ขั้นดำเนินการ (Do)',
+      description: `ดำเนินกิจกรรมหลักตามโครงการ พัฒนาศักยภาพ${target} ${focus ? `เน้น${focus}` : 'จัดกิจกรรมเชิงปฏิบัติการและฝึกอบรม'}`,
+      duration: 'มิถุนายน 2568 - ธันวาคม 2568',
+      responsible: 'คณะทำงานประจำโครงการ',
+    },
+    {
+      phase: '3. ขั้นติดตามประเมินผล (Check)',
+      description: 'นิเทศ ติดตามผลการดำเนินกิจกรรม ประเมินผลตามตัวชี้วัดความสำเร็จ และสรุปแบบสอบถามความพึงพอใจ',
+      duration: 'มกราคม 2569',
+      responsible: 'คณะกรรมการนิเทศติดตาม',
+    },
+    {
+      phase: '4. ขั้นรายงานผลและสรุป (Action)',
+      description: 'สรุปและรายงานผลการดำเนินโครงการต่อผู้อำนวยการโรงเรียน และนำผลการประเมินไปพัฒนาปรับปรุงในปีต่อไป',
+      duration: 'กุมภาพันธ์ - มีนาคม 2569',
+      responsible: proposer,
+    },
+  ];
+
+  if (isOnet) {
+    rationaleText = `การทดสอบทางการศึกษาระดับชาติขั้นพื้นฐาน (O-NET) และการประเมินคุณภาพผู้เรียน (NT) เป็นเครื่องมือสำคัญในการสะท้อนคุณภาพและมาตรฐานการศึกษาของสถานศึกษา โรงเรียนเล็งเห็นความจำเป็นเร่งด่วนในการยกระดับผลสัมฤทธิ์ทางการเรียนของนักเรียนให้สูงขึ้น จึงได้จัดทำ "${name}" ขึ้น เพื่อวิเคราะห์ผลการสอบปีที่ผ่านมา ออกแบบการจัดกิจกรรมเสริมทักษะ ฝึกทักษะการคิดวิเคราะห์ และเตรียมความพร้อมให้นักเรียนอย่างเข้มข้นรอบด้าน`;
+    objectivesList = [
+      'เพื่อยกระดับผลสัมฤทธิ์ทางการเรียนและการทดสอบระดับชาติ (O-NET และ NT) ของนักเรียนให้สูงกว่าค่าเฉลี่ยระดับประเทศ',
+      'เพื่อพัฒนาทักษะการคิดวิเคราะห์ การแก้ปัญหา และเทคนิคการทำแบบทดสอบให้แก่นักเรียนอย่างเป็นระบบ',
+      'เพื่อส่งเสริมให้ครูผู้สอนนำผลการวิเคราะห์คะแนนสอบมาพัฒนาและปรับปรุงการจัดการเรียนรู้อย่างตรงจุด',
+    ];
+  } else if (isAiDigital) {
+    rationaleText = `ในยุคดิจิทัลและปัญญาประดิษฐ์ (AI) การสร้างความฉลาดรู้ทางเทคโนโลยี (Digital & AI Literacy) เป็นทักษะจำเป็นเร่งด่วนสำหรับผู้เรียนในศตวรรษที่ 21 สอดคล้องกับนโยบาย "เรียนดี มีความสุข" ของกระทรวงศึกษาธิการ โรงเรียนจึงจัดทำ "${name}" ขึ้น เพื่อส่งเสริมการใช้เทคโนโลยีและ AI อย่างสร้างสรรค์ ปลอดภัย และมีจริยธรรม พัฒนาทักษะการคิดเชิงคำนวณและการแก้ปัญหาเชิงประยุกต์`;
+    objectivesList = [
+      'เพื่อพัฒนาทักษะความรู้ความเข้าใจด้านดิจิทัลและปัญญาประดิษฐ์ (AI Literacy) ให้แก่นักเรียนและครูผู้สอน',
+      'เพื่อส่งเสริมการประยุกต์ใช้เครื่องมือเทคโนโลยีดิจิทัลในการเรียนรู้และการจัดการเรียนการสอนอย่างมีประสิทธิภาพ',
+      'เพื่อปลูกฝังการรู้เท่าทันสื่อดิจิทัล ความปลอดภัยในโลกไซเบอร์ และจริยธรรมในการใช้ปัญญาประดิษฐ์',
+    ];
+  } else if (isMorality) {
+    rationaleText = `คุณธรรม จริยธรรม และจิตสำนึกความเป็นพลเมืองที่ดีเป็นรากฐานสำคัญในการพัฒนาผู้เรียนให้เป็นมนุษย์ที่สมบูรณ์ โรงเรียนจึงได้จัดทำ "${name}" ขึ้นตามแนวทางโครงการโรงเรียนสุจริตและสถานศึกษาคุณธรรม เพื่อปลูกฝังค่านิยมความซื่อสัตย์สุจริต วินัย ความรับผิดชอบ และจิตอาสา ให้เกิดขึ้นในจิตสำนึกของนักเรียนทุกคน`;
+    objectivesList = [
+      'เพื่อปลูกฝังคุณธรรม จริยธรรม และค่านิยมความซื่อสัตย์สุจริตตามแนวทางโรงเรียนสุจริต',
+      'เพื่อส่งเสริมให้นักเรียนมีระเบียบวินัย ความรับผิดชอบต่อส่วนรวม และมีจิตอาสาช่วยเหลือสังคม',
+      'เพื่อสร้างภูมิคุ้มกันและส่งเสริมพฤติกรรมเชิงบวกในการดำเนินชีวิตตามวิถีประชาธิปไตย',
+    ];
+  }
+
+  // Calculate realistic expense items fitting exact totalBudget
   const remBudget = Math.round(budget * 0.2);
   const operBudget = Math.round(budget * 0.45);
-  const matBudget = Math.round(budget * 0.35);
+  const matBudget = budget - remBudget - operBudget;
+
+  const expenseItems = [
+    {
+      id: 1,
+      projectId: 0,
+      itemName: isOnet
+        ? 'ค่าตอบแทนวิทยากรติวเข้มและผู้ทรงคุณวุฒิ'
+        : 'ค่าตอบแทนวิทยากรผู้เชี่ยวชาญการฝึกอบรมเชิงปฏิบัติการ',
+      category: 'ค่าตอบแทน' as const,
+      quantity: 1,
+      unit: 'รายการ',
+      unitPrice: remBudget,
+      totalAmount: remBudget,
+    },
+    {
+      id: 2,
+      projectId: 0,
+      itemName: isOnet
+        ? 'ค่าอาหารกลางวันและอาหารว่างสำหรับนักเรียนและคณะครูผู้เข้าค่ายยกระดับผลสัมฤทธิ์'
+        : 'ค่าอาหารกลางวันและเครื่องดื่มสำหรับผู้เข้าร่วมกิจกรรมการอบรมและพัฒนา',
+      category: 'ค่าใช้สอย' as const,
+      quantity: 1,
+      unit: 'รายการ',
+      unitPrice: operBudget,
+      totalAmount: operBudget,
+    },
+    {
+      id: 3,
+      projectId: 0,
+      itemName: isOnet
+        ? 'ค่าจัดพิมพ์คู่มือคลังข้อสอบ แบบฝึกเสริมทักษะ และเอกสารประกอบการติว'
+        : 'ค่าวัสดุ อุปกรณ์ สื่อการเรียนรู้ และเอกสารประกอบกิจกรรม',
+      category: 'ค่าวัสดุ' as const,
+      quantity: 1,
+      unit: 'ชุด',
+      unitPrice: matBudget,
+      totalAmount: matBudget,
+    },
+  ];
 
   return {
     projectCode: 'กค.01/2568',
@@ -139,88 +258,34 @@ function generateFallbackProposal(params: {
     projectType: type,
     department: dept,
     strategyAlignment: strat,
-    responsiblePerson: 'หัวหน้ากลุ่มงาน/ผู้รับผิดชอบโครงการ',
-    position: 'ครูผู้รับผิดชอบงานโครงการ',
-    rationale: `ตามพระราชบัญญัติการศึกษาแห่งชาติ พ.ศ. 2542 และที่แก้ไขเพิ่มเติม รวมถึงนโยบายและจุดเน้นของสำนักงานคณะกรรมการการศึกษาขั้นพื้นฐาน (สพฐ.) มุ่งเน้นการยกระดับคุณภาพการจัดการศึกษาให้ผู้เรียนมีสมรรถนะสำคัญตามหลักสูตรแกนกลาง มีทักษะในศตวรรษที่ 21 และมีคุณลักษณะอันพึงประสงค์ โรงเรียนจึงตระหนักถึงความสำคัญในการจัดทำ "${name}" ขึ้น เพื่อขับเคลื่อนการพัฒนาศักยภาพของ${target}อย่างเป็นระบบ ต่อเนื่อง และมีประสิทธิภาพ${focus} ตอบสนองต่อมาตรฐานการศึกษาของสถานศึกษาและทิศทางการพัฒนาการศึกษาชาติอย่างยั่งยืน`,
-    objectives: [
-      `เพื่อพัฒนาทักษะ ความรู้ และสมรรถนะที่สำคัญของ${target} ให้สอดคล้องกับมาตรฐานการเรียนรู้`,
-      `เพื่อยกระดับผลสัมฤทธิ์และส่งเสริมกระบวนการเรียนรู้เชิงรุก (Active Learning) ให้เกิดประสิทธิภาพสูงสุด`,
-      `เพื่อสร้างเครือข่ายความร่วมมือระหว่างครู ผู้เรียน และผู้ปกครองในการสนับสนุนการจัดกิจกรรมการเรียนรู้`,
-    ],
-    quantitativeTarget: `${target} ร้อยละ 90 เข้าร่วมกิจกรรมและได้รับการพัฒนาตามเกณฑ์ที่กำหนด`,
-    qualitativeTarget: `ผู้เข้าร่วมโครงการมีความพึงพอใจในระดับดีมาก (ร้อยละ 85 ขึ้นไป) และนำความรู้ไปประยุกต์ใช้ในการเรียนและการปฏิบัติงานได้อย่างเป็นรูปธรรม`,
+    responsiblePerson: proposer,
+    position: propPos,
+    proposerName: proposer,
+    proposerPosition: propPos,
+    endorserName: endorser,
+    endorserPosition: endPos,
+    approverName: approver,
+    approverPosition: appPos,
+    rationale: rationaleText,
+    objectives: objectivesList,
+    quantitativeTarget: `${target} ไม่น้อยกว่าร้อยละ 85 เข้าร่วมกิจกรรมและผ่านเกณฑ์การประเมิน`,
+    qualitativeTarget: `ผู้เข้าร่วมโครงการมีความพึงพอใจในระดับดีมาก (ร้อยละ 85 ขึ้นไป) และมีผลการพัฒนาสมรรถนะตามเป้าหมายอย่างเป็นรูปธรรม`,
     timeline: dur,
     location: 'โรงเรียนและแหล่งเรียนรู้ที่เกี่ยวข้อง',
-    activities: [
-      {
-        phase: '1. ขั้นเตรียมการ (Plan)',
-        description: 'ประชุมวางแผน ชี้แจงคณะทำงาน แต่งตั้งคณะกรรมการดำเนินงาน และจัดเตรียมสื่อ เอกสาร อุปกรณ์',
-        duration: 'พฤษภาคม 2568',
-        responsible: 'ผู้รับผิดชอบโครงการ',
-      },
-      {
-        phase: '2. ขั้นดำเนินการ (Do)',
-        description: 'จัดอบรมเชิงปฏิบัติการ กิจกรรมพัฒนาทักษะ และการแลกเปลี่ยนเรียนรู้ตามแผนงาน',
-        duration: 'มิถุนายน 2568 - มกราคม 2569',
-        responsible: 'คณะทำงานประจำโครงการ',
-      },
-      {
-        phase: '3. ขั้นติดตามประเมินผล (Check)',
-        description: 'นิเทศ ติดตามผลการดำเนินกิจกรรม ประเมินผลตามตัวชี้วัดความสำเร็จ และสรุปผลแบบสอบถามความพึงพอใจ',
-        duration: 'กุมภาพันธ์ 2569',
-        responsible: 'คณะกรรมการประเมินผล',
-      },
-      {
-        phase: '4. ขั้นรายงานผลและสรุป (Action)',
-        description: 'สรุปและรายงานผลการดำเนินโครงการต่อผู้อำนวยการโรงเรียน และเผยแพร่ผลการดำเนินงาน',
-        duration: 'มีนาคม 2569',
-        responsible: 'ผู้รับผิดชอบโครงการ',
-      },
-    ],
-    expenseItems: [
-      {
-        id: 1,
-        projectId: 0,
-        itemName: 'ค่าตอบแทนวิทยากรผู้เชี่ยวชาญ (6 ชม. x 600 บาท)',
-        category: 'ค่าตอบแทน',
-        quantity: 1,
-        unit: 'ครั้ง',
-        unitPrice: remBudget,
-        totalAmount: remBudget,
-      },
-      {
-        id: 2,
-        projectId: 0,
-        itemName: 'ค่าอาหารกลางวันและอาหารว่างสำหรับผู้เข้าร่วมกิจกรรม',
-        category: 'ค่าใช้สอย',
-        quantity: 1,
-        unit: 'รายการ',
-        unitPrice: operBudget,
-        totalAmount: operBudget,
-      },
-      {
-        id: 3,
-        projectId: 0,
-        itemName: 'ค่าวัสดุ อุปกรณ์ สื่อการเรียนรู้ และเอกสารประกอบการจัดกิจกรรม',
-        category: 'ค่าวัสดุ',
-        quantity: 1,
-        unit: 'ชุด',
-        unitPrice: matBudget,
-        totalAmount: matBudget,
-      },
-    ],
+    activities: pdcaList,
+    expenseItems: expenseItems,
     totalBudget: budget,
     budgetSource: 'เงินอุดหนุนรายหัว สพฐ. / แผนปฏิบัติการประจำปี',
     kpis: 'ร้อยละ 85 ของผู้เข้าร่วมโครงการมีผลการประเมินทักษะและสมรรถนะผ่านเกณฑ์ที่กำหนดในระดับดีขึ้นไป',
-    evaluationMethods: 'แบบประเมินสมรรถนะ, แบบทดสอบ, แบบสังเกตพฤติกรรม, และแบบสอบถามความพึงพอใจ',
+    evaluationMethods: 'แบบทดสอบ แบบประเมินสมรรถนะ แบบสังเกตพฤติกรรม และแบบสอบถามความพึงพอใจ',
     expectedBenefits: [
-      `${target} ได้รับการพัฒนาทักษะและองค์ความรู้อย่างมีคุณภาพ`,
-      'สถานศึกษามีผลสัมฤทธิ์และมาตรฐานการจัดการศึกษาที่สูงขึ้นตามเป้าหมายของ สพฐ.',
-      'เกิดนวัตกรรมและแนวปฏิบัติที่ดี (Best Practice) สามารถนำไปต่อยอดขยายผลได้',
+      `${target} ได้รับการพัฒนาทักษะ องค์ความรู้ และสมรรถนะอย่างมีประสิทธิภาพ`,
+      'สถานศึกษามีผลสัมฤทธิ์และมาตรฐานการศึกษาที่สูงขึ้นตามเป้าหมายของ สพฐ.',
+      'เกิดแนวปฏิบัติที่ดี (Best Practice) สามารถนำไปต่อยอดและเผยแพร่ขยายผลได้',
     ],
-    proposedBy: 'ลงชื่อ.......................................................... ผู้เสนอโครงการ',
-    approvedBy: 'ลงชื่อ.......................................................... ผู้อนุมัติโครงการ (ผู้อำนวยการโรงเรียน)',
-    acknowledgedBy: 'ลงชื่อ.......................................................... ผู้เห็นชอบโครงการ (หัวหน้ากลุ่มงาน)',
+    proposedBy: `(ลงชื่อ).......................................................... ผู้เสนอโครงการ\n(${proposer})\nตำแหน่ง ${propPos}`,
+    approvedBy: `(ลงชื่อ).......................................................... ผู้อนุมัติโครงการ\n(${approver})\nตำแหน่ง ${appPos}`,
+    acknowledgedBy: `(ลงชื่อ).......................................................... ผู้เห็นชอบโครงการ\n(${endorser})\nตำแหน่ง ${endPos}`,
   };
 }
 
@@ -238,12 +303,17 @@ app.post('/api/ai/generate-project', async (req, res) => {
       duration,
       specialFocus,
       customApiKey,
+      proposerName,
+      proposerPosition,
+      endorserName,
+      endorserPosition,
+      approverName,
+      approverPosition,
     } = req.body || {};
 
     const apiKey = (customApiKey && String(customApiKey).trim()) || process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
-      // Return structured fallback and instruct client that API key can be provided
       const fallback = generateFallbackProposal({
         projectName,
         projectType,
@@ -253,11 +323,17 @@ app.post('/api/ai/generate-project', async (req, res) => {
         estimatedBudget,
         duration,
         specialFocus,
+        proposerName,
+        proposerPosition,
+        endorserName,
+        endorserPosition,
+        approverName,
+        approverPosition,
       });
       return res.json({
         success: true,
         source: 'template_fallback',
-        message: 'สร้างโครงร่างโครงการตามมาตรฐาน สพฐ. เรียบร้อย (แนะนำระบุ Gemini API Key เพื่อให้ AI เจนเนื้อหาแบบเฉพาะเจาะจง)',
+        message: 'สร้างโครงร่างโครงการตามมาตรฐาน สพฐ. เรียบร้อย',
         data: fallback,
       });
     }
@@ -280,21 +356,27 @@ app.post('/api/ai/generate-project', async (req, res) => {
 3. projectType: "ใหม่" หรือ "ต่อเนื่อง"
 4. department: กลุ่มงาน/ฝ่ายบริหาร เช่น "ฝ่ายวิชาการ", "ฝ่ายงบประมาณ", "ฝ่ายบุคคล", "ฝ่ายบริหารทั่วไป"
 5. strategyAlignment: ความสอดคล้องกับยุทธศาสตร์สถานศึกษา หรือยุทธศาสตร์ สพฐ.
-6. responsiblePerson: ผู้รับผิดชอบโครงการ (ระบุตำแหน่งด้วย เช่น ครูชำนาญการ/หัวหน้างาน)
-7. position: ตำแหน่ง
-8. rationale: หลักการและเหตุผล เขียนเป็นภาษาราชการ 2-3 ย่อหน้า ระบุบริบท นโยบาย สภาพปัญหา และความจำเป็น
-9. objectives: อาร์เรย์ของวัตถุประสงค์ 3-4 ข้อ เริ่มต้นด้วย "เพื่อ..."
-10. quantitativeTarget: เป้าหมายเชิงปริมาณที่ชัดเจน มีตัวเลขหรือร้อยละ
-11. qualitativeTarget: เป้าหมายเชิงคุณภาพ
-12. timeline: ระยะเวลาดำเนินการ
-13. location: สถานที่ดำเนินการ
-14. activities: ตารางขั้นตอนการดำเนินงานตามวงจร PDCA (4 ขั้น: Plan, Do, Check, Action) แต่ละขั้นมี phase, description, duration, responsible
-15. expenseItems: แจกแจงรายการค่าใช้จ่าย 4 หมวดของ สพฐ. (ค่าตอบแทน, ค่าใช้สอย, ค่าวัสดุ, ค่าครุภัณฑ์) แต่ละรายการมี id, itemName, category, quantity, unit, unitPrice, totalAmount โดย totalAmount = quantity * unitPrice และผลรวมทุกรายการต้องเท่ากับ totalBudget
-16. totalBudget: ตัวเลขงบประมาณรวมทั้งสิ้น (บาท)
-17. budgetSource: แหล่งงบประมาณ เช่น "เงินอุดหนุนรายหัว สพฐ. ปีงบประมาณ 2568"
-18. kpis: ตัวชี้วัดความสำเร็จ (KPI) ที่วัดผลได้จริง
-19. evaluationMethods: วิธีการและเครื่องมือประเมินผล
-20. expectedBenefits: ประโยชน์ที่คาดว่าจะได้รับ 3-4 ข้อ
+6. responsiblePerson: ชื่อผู้เสนอ/ผู้รับผิดชอบโครงการ
+7. position: ตำแหน่งผู้เสนอโครงการ
+8. proposerName: ชื่อผู้เสนอโครงการ
+9. proposerPosition: ตำแหน่งผู้เสนอโครงการ
+10. endorserName: ชื่อผู้เห็นชอบโครงการ
+11. endorserPosition: ตำแหน่งผู้เห็นชอบโครงการ
+12. approverName: ชื่อผู้อนุมัติโครงการ (ผู้อำนวยการโรงเรียน)
+13. approverPosition: ตำแหน่งผู้อนุมัติโครงการ
+14. rationale: หลักการและเหตุผล เขียนเป็นภาษาราชการ 2-3 ย่อหน้า ระบุบริบท นโยบาย สภาพปัญหา และความจำเป็น
+15. objectives: อาร์เรย์ของวัตถุประสงค์ 3-4 ข้อ เริ่มต้นด้วย "เพื่อ..."
+16. quantitativeTarget: เป้าหมายเชิงปริมาณที่ชัดเจน มีตัวเลขหรือร้อยละ
+17. qualitativeTarget: เป้าหมายเชิงคุณภาพ
+18. timeline: ระยะเวลาดำเนินการ
+19. location: สถานที่ดำเนินการ
+20. activities: ตารางขั้นตอนการดำเนินงานตามวงจร PDCA (4 ขั้น: Plan, Do, Check, Action) แต่ละขั้นมี phase, description, duration, responsible
+21. expenseItems: แจกแจงรายการค่าใช้จ่าย 4 หมวดของ สพฐ. (ค่าตอบแทน, ค่าใช้สอย, ค่าวัสดุ, ค่าครุภัณฑ์) แต่ละรายการมี id, itemName, category, quantity, unit, unitPrice, totalAmount โดย totalAmount = quantity * unitPrice และผลรวมทุกรายการต้องเท่ากับ totalBudget
+22. totalBudget: ตัวเลขงบประมาณรวมทั้งสิ้น (บาท)
+23. budgetSource: แหล่งงบประมาณ เช่น "เงินอุดหนุนรายหัว สพฐ. ปีงบประมาณ 2568"
+24. kpis: ตัวชี้วัดความสำเร็จ (KPI) ที่วัดผลได้จริง
+25. evaluationMethods: วิธีการและเครื่องมือประเมินผล
+26. expectedBenefits: ประโยชน์ที่คาดว่าจะได้รับ 3-4 ข้อ
 ตอบกลับเป็นรูปแบบ JSON ที่ถูกต้องเท่านั้น`;
 
     const userPrompt = `โปรดช่วยเขียนและเสนอโครงการทางการศึกษาตามข้อมูลต่อไปนี้:
@@ -303,9 +385,12 @@ app.post('/api/ai/generate-project', async (req, res) => {
 - ฝ่ายบริหารที่รับผิดชอบ: ${department || 'ฝ่ายวิชาการ'}
 - ยุทธศาสตร์ที่สอดคล้อง: ${strategyName || 'ยุทธศาสตร์พัฒนาคุณภาพผู้เรียน'}
 - กลุ่มเป้าหมาย: ${targetGroup || 'นักเรียนและครูผู้สอน'}
-- งบประมาณประมาณการ: ${estimatedBudget ? `${estimatedBudget} บาท` : '20,000 - 50,000 บาท'}
+- งบประมาณประมาณการ: ${estimatedBudget ? `${estimatedBudget} บาท` : '30,000 บาท'}
 - ระยะเวลาดำเนินการ: ${duration || 'ตลอดปีการศึกษา 2568'}
 - จุดเน้นหรือความต้องการพิเศษ: ${specialFocus || 'เน้นการปฏิบัติจริง พัฒนาผลสัมฤทธิ์ และความคุ้มค่าตามระเบียบราชการ'}
+- ผู้เสนอโครงการ: ${proposerName || 'ครูผู้รับผิดชอบโครงการ'} (${proposerPosition || 'ครูชำนาญการพิเศษ'})
+- ผู้เห็นชอบโครงการ: ${endorserName || 'หัวหน้าฝ่ายแผนงานและงบประมาณ'} (${endorserPosition || 'หัวหน้ากลุ่มงาน'})
+- ผู้อนุมัติโครงการ: ${approverName || 'ผู้อำนวยการโรงเรียน'} (${approverPosition || 'ผู้อำนวยการสถานศึกษา'})
 ${prompt ? `คำสั่งเพิ่มเติม: ${prompt}` : ''}`;
 
     const response = await ai.models.generateContent({
@@ -323,10 +408,17 @@ ${prompt ? `คำสั่งเพิ่มเติม: ${prompt}` : ''}`;
     try {
       parsedData = JSON.parse(responseText.trim());
     } catch (parseErr) {
-      // In case json contains backticks or formatting
       const cleanJson = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
       parsedData = JSON.parse(cleanJson);
     }
+
+    // Ensure signatories are populated
+    parsedData.proposerName = parsedData.proposerName || proposerName || parsedData.responsiblePerson || 'ครูผู้เสนอโครงการ';
+    parsedData.proposerPosition = parsedData.proposerPosition || proposerPosition || parsedData.position || 'ครูผู้รับผิดชอบโครงการ';
+    parsedData.endorserName = parsedData.endorserName || endorserName || 'นายพิเชษฐ์ ปัญญาวงศ์';
+    parsedData.endorserPosition = parsedData.endorserPosition || endorserPosition || `หัวหน้ากลุ่มงาน${department || 'วิชาการ'}`;
+    parsedData.approverName = parsedData.approverName || approverName || 'ดร.สมศักดิ์ พัฒนศึกษา';
+    parsedData.approverPosition = parsedData.approverPosition || approverPosition || 'ผู้อำนวยการโรงเรียน';
 
     // Ensure budget consistency
     if (parsedData.expenseItems && Array.isArray(parsedData.expenseItems)) {
@@ -350,7 +442,6 @@ ${prompt ? `คำสั่งเพิ่มเติม: ${prompt}` : ''}`;
     });
   } catch (error: any) {
     console.error('Gemini API generation error:', error);
-    // Graceful fallback to avoid leaving user with broken UI
     const fallback = generateFallbackProposal({
       projectName: req.body?.projectName,
       projectType: req.body?.projectType,
@@ -360,11 +451,118 @@ ${prompt ? `คำสั่งเพิ่มเติม: ${prompt}` : ''}`;
       estimatedBudget: req.body?.estimatedBudget,
       duration: req.body?.duration,
       specialFocus: req.body?.specialFocus,
+      proposerName: req.body?.proposerName,
+      proposerPosition: req.body?.proposerPosition,
+      endorserName: req.body?.endorserName,
+      endorserPosition: req.body?.endorserPosition,
+      approverName: req.body?.approverName,
+      approverPosition: req.body?.approverPosition,
     });
     return res.json({
       success: true,
       source: 'fallback_error',
-      errorMessage: error.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อ Gemini API',
+      errorMessage: error.message || 'เกิดข้อผิดพลาดในการเชื่อมต่อ Gemini API (ใช้ร่างมาตรฐาน สพฐ.)',
+      data: fallback,
+    });
+  }
+});
+
+// Bridge for PHP API calls to /api/ai_generate.php and /ai_generate.php
+app.all(['/api/ai_generate.php', '/ai_generate.php'], async (req, res) => {
+  try {
+    const body = req.body || {};
+    const projectName = body.project_name || body.projectName || '';
+    const department = body.department || 'ฝ่ายบริหารงานวิชาการ';
+    const responsible = body.responsible_person || body.proposerName || 'นางสาวกนกพร ใจมั่น';
+    const budget = parseFloat(body.budget) || 45000;
+    const target = body.target_audience || body.targetGroup || 'นักเรียนและครูผู้สอนทุกคน';
+    const objectives = body.key_objectives || '';
+    const customApiKey = body.api_key || body.customApiKey || '';
+    const endorserName = body.endorser_name || body.endorserName || 'นายพิเชษฐ์ ปัญญาวงศ์';
+    const approverName = body.approver_name || body.approverName || 'ดร.สมศักดิ์ พัฒนศึกษา';
+
+    const apiKey = (customApiKey && String(customApiKey).trim()) || process.env.GEMINI_API_KEY;
+
+    if (!apiKey) {
+      const fallback = generateFallbackProposal({
+        projectName,
+        department,
+        estimatedBudget: budget,
+        targetGroup: target,
+        specialFocus: objectives,
+        proposerName: responsible,
+        endorserName,
+        approverName,
+      });
+      return res.json({
+        success: true,
+        source: 'template_fallback',
+        data: {
+          ...fallback,
+          alignment: fallback.strategyAlignment,
+          quantitativeTargets: [fallback.quantitativeTarget],
+          qualitativeTargets: [fallback.qualitativeTarget],
+          pdcaSchedule: fallback.activities.map(a => ({
+            phase: a.phase,
+            activities: a.description,
+            period: a.duration,
+            responsible: a.responsible,
+          })),
+          budgetItems: fallback.expenseItems.map(e => ({
+            category: e.category,
+            item: e.itemName,
+            quantity: e.quantity,
+            unit: e.unit,
+            unitPrice: e.unitPrice,
+            total: e.totalAmount,
+          })),
+          indicators: [fallback.kpis],
+          expectedOutcomes: fallback.expectedBenefits,
+        },
+      });
+    }
+
+    // Call Gemini for PHP request
+    const ai = new GoogleGenAI({
+      apiKey: apiKey,
+      httpOptions: { headers: { 'User-Agent': 'aistudio-build' } },
+    });
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.8-flash',
+      contents: `สร้างข้อเสนอโครงการ สพฐ. ฉบับสมบูรณ์สำหรับโรงเรียน
+ชื่อโครงการ: ${projectName}
+ฝ่าย: ${department}
+ผู้เสนอโครงการ: ${responsible}
+งบประมาณ: ${budget} บาท
+กลุ่มเป้าหมาย: ${target}
+จุดเน้น: ${objectives}
+ผู้เห็นชอบโครงการ: ${endorserName}
+ผู้อนุมัติโครงการ: ${approverName}
+ตอบกลับเป็น JSON ภาษาไทยที่มี projectName, projectType, alignment, department, responsiblePerson, rationale, objectives, quantitativeTargets, qualitativeTargets, location, duration, pdcaSchedule, budgetItems, indicators, evaluationMethods, expectedOutcomes, proposerName, endorserName, approverName`,
+      config: {
+        responseMimeType: 'application/json',
+        temperature: 0.7,
+      },
+    });
+
+    const parsed = JSON.parse(response.text?.replace(/```json/g, '').replace(/```/g, '').trim() || '{}');
+    return res.json({
+      success: true,
+      source: 'gemini_ai',
+      data: parsed,
+    });
+  } catch (err: any) {
+    const fallback = generateFallbackProposal({
+      projectName: req.body?.project_name,
+      department: req.body?.department,
+      estimatedBudget: req.body?.budget,
+      targetGroup: req.body?.target_audience,
+      proposerName: req.body?.responsible_person,
+    });
+    return res.json({
+      success: true,
+      source: 'fallback',
       data: fallback,
     });
   }

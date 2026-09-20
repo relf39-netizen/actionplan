@@ -6,7 +6,8 @@ import {
   School, 
   FiscalYear, 
   Strategy, 
-  Project 
+  Project,
+  User
 } from '../types';
 import { exportProjectProposalToWordDoc } from '../utils/exportUtils';
 import { 

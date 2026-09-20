@@ -374,6 +374,7 @@ export default function App() {
                 students={students}
                 activeFiscalYear={activeFiscalYear}
                 onUpdateStudents={handleUpdateStudents}
+                onUpdateFiscalYear={handleUpdateFiscalYear}
               />
             )}
 
@@ -409,6 +410,7 @@ export default function App() {
                 school={school}
                 fiscalYear={activeFiscalYear}
                 strategies={strategies}
+                users={users}
                 onSaveToProjects={(newProject) => {
                   setProjects((prev) => [newProject, ...prev]);
                 }}

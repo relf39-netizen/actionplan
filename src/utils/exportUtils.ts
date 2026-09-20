@@ -301,26 +301,26 @@ export function exportProjectProposalToWordDoc(
         <table style="width: 100%; border: none; margin-top: 40px; page-break-inside: avoid;">
           <tr style="border: none;">
             <td style="width: 50%; border: none; text-align: center; vertical-align: top; padding: 10px;">
-              <p>ลงชื่อ.......................................................... ผู้เสนอโครงการ</p>
-              <p>(${proposal.responsiblePerson || '..........................................................'})</p>
-              <p>ตำแหน่ง ${proposal.position || 'ครูผู้รับผิดชอบโครงการ'}</p>
+              <p>(ลงชื่อ).......................................................... ผู้เสนอโครงการ</p>
+              <p>(${proposal.proposerName || proposal.responsiblePerson || '..........................................................'})</p>
+              <p>ตำแหน่ง ${proposal.proposerPosition || proposal.position || 'ครูผู้รับผิดชอบโครงการ'}</p>
               <p>วันที่ ..... เดือน .................... พ.ศ. .........</p>
             </td>
             <td style="width: 50%; border: none; text-align: center; vertical-align: top; padding: 10px;">
-              <p>ลงชื่อ.......................................................... ผู้เห็นชอบโครงการ</p>
-              <p>(..........................................................)</p>
-              <p>ตำแหน่ง หัวหน้ากลุ่มงาน${proposal.department || ''}</p>
+              <p>(ลงชื่อ).......................................................... ผู้เห็นชอบโครงการ</p>
+              <p>(${proposal.endorserName || '..........................................................'})</p>
+              <p>ตำแหน่ง ${proposal.endorserPosition || `หัวหน้ากลุ่มงาน${proposal.department || ''}`}</p>
               <p>วันที่ ..... เดือน .................... พ.ศ. .........</p>
             </td>
           </tr>
           <tr style="border: none;">
-            <td colspan="2" style="border: none; text-align: center; vertical-align: top; padding-top: 30px;">
-              <p style="font-weight: bold;">คำอนุมัติของผู้อำนวยการสถานศึกษา</p>
-              <p>[ &nbsp; ] อนุมัติ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [ &nbsp; ] ไม่อนุมัติ เนื่องจาก ..............................................................</p>
+            <td colspan="2" style="border: none; text-align: center; vertical-align: top; padding-top: 25px;">
+              <p style="font-weight: bold; font-size: 16pt;">คำอนุมัติของผู้อำนวยการสถานศึกษา</p>
+              <p style="margin: 10px 0;">[ &nbsp; ] อนุมัติ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; [ &nbsp; ] ไม่อนุมัติ เนื่องจาก ..............................................................</p>
               <br/>
-              <p>ลงชื่อ.......................................................... ผู้อนุมัติโครงการ</p>
-              <p>(${school.directorName})</p>
-              <p>ตำแหน่ง ผู้อำนวยการโรงเรียน${school.name}</p>
+              <p>(ลงชื่อ).......................................................... ผู้อนุมัติโครงการ</p>
+              <p style="font-weight: bold;">(${proposal.approverName || school.directorName})</p>
+              <p>ตำแหน่ง ${proposal.approverPosition || `ผู้อำนวยการโรงเรียน${school.name}`}</p>
               <p>วันที่ ..... เดือน .................... พ.ศ. .........</p>
             </td>
           </tr>
