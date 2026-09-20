@@ -201,52 +201,80 @@ function saveSchoolToJson(array $newSchool): bool {
 }
 
 /**
+ * โฟลเดอร์เก็บข้อมูลเฉพาะของแต่ละโรงเรียน (Multi-Tenant Local Storage)
+ */
+function getSchoolDataDir(int $schoolId): string {
+    $dir = __DIR__ . '/../config/data_school_' . $schoolId;
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0777, true);
+    }
+    return $dir;
+}
+
+/**
  * ดึงข้อมูลโรงเรียนปัจจุบัน (ตาม school_id ใน Session หรือระบุ)
  */
 function getSchoolData(?int $schoolId = null): array {
     if ($schoolId === null && !empty($_SESSION['school_id'])) {
         $schoolId = (int)$_SESSION['school_id'];
     }
+    $schoolId = $schoolId ?: 1;
 
+    // 1. ตรวจสอบไฟล์ config/data_school_{$schoolId}/school_info.json ก่อน
+    $dir = getSchoolDataDir($schoolId);
+    $customFile = $dir . '/school_info.json';
+    if (file_exists($customFile)) {
+        $data = json_decode(@file_get_contents($customFile), true);
+        if (is_array($data) && !empty($data['name'])) {
+            return $data;
+        }
+    }
+
+    // 2. ตรวจสอบจาก MySQL
     $db = Database::getConnection();
     if ($db) {
         try {
-            if ($schoolId !== null && $schoolId > 0) {
+            if ($schoolId > 0) {
                 $stmt = $db->prepare("SELECT * FROM schools WHERE id = ? LIMIT 1");
                 $stmt->execute([$schoolId]);
                 $row = $stmt->fetch();
                 if ($row) return $row;
             }
-            $stmt = $db->query("SELECT * FROM schools ORDER BY id ASC LIMIT 1");
-            $row = $stmt->fetch();
-            if ($row) return $row;
         } catch (Exception $e) {
             // fallback
         }
     }
 
-    // Check all schools from file or session
+    // 3. ตรวจสอบจาก config/schools_data.json
     $allSchools = getAllSchoolsList();
-    if ($schoolId !== null && $schoolId > 0) {
-        foreach ($allSchools as $s) {
-            if ((int)$s['id'] === $schoolId) {
-                return $s;
-            }
+    foreach ($allSchools as $s) {
+        if ((int)$s['id'] === $schoolId) {
+            return array_merge([
+                'address' => '124 หมู่ที่ 3 ถนนมิตรภาพ',
+                'subdistrict' => 'ในเมือง',
+                'district' => 'เมือง',
+                'province' => $s['province'] ?? 'กรุงเทพมหานคร',
+                'zipcode' => '10100',
+                'affiliation' => 'สำนักงานคณะกรรมการการศึกษาขั้นพื้นฐาน (สพฐ.)',
+                'education_area' => $s['education_area'] ?? 'สำนักงานเขตพื้นที่การศึกษาประถมศึกษา',
+                'fiscal_year' => 2568,
+                'director_name' => $s['director_name'] ?? 'ผู้อำนวยการโรงเรียน',
+                'phone' => $s['phone'] ?? '02-000-0000',
+                'email' => $s['email'] ?? 'school@obec.mail.go.th',
+                'logo_url' => 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=160&auto=format&fit=crop&q=80',
+                'philosophy' => 'ปญฺญา โลกสฺมิ ปชฺโชโต (ปัญญาเป็นแสงสว่างในโลก)',
+                'vision' => 'มุ่งมั่นจัดการศึกษาอย่างมีคุณภาพ ผู้เรียนมีคุณธรรม จริยธรรม ก้าวทันเทคโนโลยีและปัญญาประดิษฐ์ ดำรงชีวิตตามหลักปรัชญาของเศรษฐกิจพอเพียง',
+                'mission' => "1. พัฒนาผู้เรียนให้มีคุณภาพตามมาตรฐานการศึกษาขั้นพื้นฐานและทักษะแห่งศตวรรษที่ 21\n2. ส่งเสริมคุณธรรม จริยธรรม ความเป็นไทย และน้อมนำหลักปรัชญาของเศรษฐกิจพอเพียง\n3. พัฒนาครูและบุคลากรทางการศึกษาให้มีความเชี่ยวชาญด้านการจัดการเรียนรู้เชิงรุก (Active Learning)\n4. บริหารจัดการสถานศึกษาอย่างมีประสิทธิภาพด้วยระบบธรรมาภิบาลและการมีส่วนร่วม",
+                'goals' => "1. ผู้เรียนมีผลสัมฤทธิ์ทางการเรียนสูงขึ้นและผ่านเกณฑ์การประเมินระดับชาติ\n2. นักเรียนทุกคนมีทักษะดิจิทัลและการใช้ AI อย่างปลอดภัยและสร้างสรรค์\n3. ครูจัดการเรียนรู้เชิงรุกโดยเน้นผู้เรียนเป็นสำคัญ 100%\n4. แผนปฏิบัติการประจำปีได้รับการบริหารจัดการอย่างโปร่งใส ตรวจสอบได้",
+                'teacher_count' => 15,
+                'student_count' => (int)($s['student_count'] ?? 180),
+            ], $s);
         }
     }
 
-    // Check if school data was stored directly in session
-    if (isset($_SESSION['school']) && is_array($_SESSION['school']) && !empty($_SESSION['school']['name'])) {
-        return $_SESSION['school'];
-    }
-
-    // Return first available school
-    if (!empty($allSchools)) {
-        return $allSchools[0];
-    }
-
+    // 4. Default Fallback
     return [
-        'id' => 1,
+        'id' => $schoolId,
         'school_code' => '1000000001',
         'smis_code' => '10000001',
         'name' => 'โรงเรียนเด็กเรียนดี',
@@ -261,8 +289,83 @@ function getSchoolData(?int $schoolId = null): array {
         'director_name' => 'ดร.สมศักดิ์ พัฒนศึกษา (ผู้อำนวยการ)',
         'phone' => '02-123-4567',
         'email' => 'dekriandee_school@obec.mail.go.th',
-        'logo_url' => 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=160&auto=format&fit=crop&q=80'
+        'logo_url' => 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=160&auto=format&fit=crop&q=80',
+        'philosophy' => 'ปญฺญา โลกสฺมิ ปชฺโชโต (ปัญญาเป็นแสงสว่างในโลก)',
+        'vision' => 'มุ่งมั่นจัดการศึกษาอย่างมีคุณภาพ ผู้เรียนมีคุณธรรม จริยธรรม ก้าวทันเทคโนโลยี ดำรงชีวิตตามหลักปรัชญาของเศรษฐกิจพอเพียง',
+        'mission' => "1. พัฒนาผู้เรียนให้มีคุณภาพตามมาตรฐานการศึกษาขั้นพื้นฐาน\n2. ส่งเสริมคุณธรรม จริยธรรมและค่านิยมที่พึงประสงค์\n3. พัฒนาครูและบุคลากรทางการศึกษาให้มีสมรรถนะสูง",
+        'goals' => "1. ผู้เรียนมีผลสัมฤทธิ์ทางการเรียนสูงขึ้น\n2. ครูร้อยละ 100 จัดการเรียนรู้เชิงรุก",
+        'teacher_count' => 15,
+        'student_count' => 180,
     ];
+}
+
+/**
+ * อัปเดตข้อมูลโรงเรียนและตราสัญลักษณ์ (Save School Profile)
+ */
+function updateSchoolData(int $schoolId, array $data): bool {
+    $current = getSchoolData($schoolId);
+    $merged = array_merge($current, $data);
+    $merged['id'] = $schoolId;
+
+    // 1. บันทึกลง config/data_school_{$schoolId}/school_info.json
+    $dir = getSchoolDataDir($schoolId);
+    @file_put_contents($dir . '/school_info.json', json_encode($merged, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+
+    // 2. อัปเดตไฟล์ config/schools_data.json สำหรับ Super Admin & Login List
+    saveSchoolToJson([
+        'id' => $schoolId,
+        'schoolCode' => $merged['school_code'] ?? ($merged['schoolCode'] ?? '1000000001'),
+        'smisCode' => $merged['smis_code'] ?? ($merged['smisCode'] ?? '10000001'),
+        'name' => $merged['name'] ?? 'โรงเรียนเด็กเรียนดี',
+        'province' => $merged['province'] ?? '',
+        'educationArea' => $merged['education_area'] ?? ($merged['educationArea'] ?? ''),
+        'directorName' => $merged['director_name'] ?? ($merged['directorName'] ?? ''),
+        'phone' => $merged['phone'] ?? '',
+        'email' => $merged['email'] ?? '',
+        'adminUsername' => $merged['admin_username'] ?? 'admin',
+        'adminPasswordPlain' => $merged['admin_password_plain'] ?? '123456',
+        'isActive' => true,
+        'studentCount' => (int)($merged['student_count'] ?? 180),
+        'totalBudget' => (float)($merged['total_budget'] ?? 746600),
+    ]);
+
+    // 3. อัปเดตฐานข้อมูล MySQL (ถ้าต่ออยู่)
+    $db = Database::getConnection();
+    if ($db) {
+        try {
+            $stmt = $db->prepare("UPDATE schools SET 
+                name = :name,
+                school_code = :school_code,
+                smis_code = :smis_code,
+                affiliation = :affiliation,
+                education_area = :education_area,
+                director_name = :director_name,
+                phone = :phone,
+                email = :email,
+                province = :province,
+                logo_url = :logo_url
+                WHERE id = :id");
+            $stmt->execute([
+                ':id' => $schoolId,
+                ':name' => $merged['name'] ?? '',
+                ':school_code' => $merged['school_code'] ?? '',
+                ':smis_code' => $merged['smis_code'] ?? '',
+                ':affiliation' => $merged['affiliation'] ?? '',
+                ':education_area' => $merged['education_area'] ?? '',
+                ':director_name' => $merged['director_name'] ?? '',
+                ':phone' => $merged['phone'] ?? '',
+                ':email' => $merged['email'] ?? '',
+                ':province' => $merged['province'] ?? '',
+                ':logo_url' => $merged['logo_url'] ?? '',
+            ]);
+        } catch (Exception $e) {
+            // ignore DB update failure if table columns differ
+        }
+    }
+
+    // 4. อัปเดต Session
+    $_SESSION['school'] = $merged;
+    return true;
 }
 
 /**
@@ -318,19 +421,35 @@ function getStudentsData(): array {
 }
 
 /**
- * ดึงข้อมูลรายรับ
+ * ดึงข้อมูลรายรับ (ตามโรงเรียน)
  */
-function getRevenuesData(): array {
+function getRevenuesData(?int $schoolId = null): array {
+    if ($schoolId === null && !empty($_SESSION['school_id'])) {
+        $schoolId = (int)$_SESSION['school_id'];
+    }
+    $schoolId = $schoolId ?: 1;
+
+    $dir = getSchoolDataDir($schoolId);
+    $customFile = $dir . '/revenues.json';
+    if (file_exists($customFile)) {
+        $data = json_decode(@file_get_contents($customFile), true);
+        if (is_array($data) && !empty($data)) {
+            return $data;
+        }
+    }
+
     $db = Database::getConnection();
     if ($db) {
         try {
-            $stmt = $db->query("SELECT * FROM revenues ORDER BY id ASC");
+            $stmt = $db->prepare("SELECT * FROM revenues WHERE school_id = ? ORDER BY id ASC");
+            $stmt->execute([$schoolId]);
             $rows = $stmt->fetchAll();
             if (!empty($rows)) return $rows;
         } catch (Exception $e) {
             // fallback
         }
     }
+
     return [
         ['id' => 1, 'category' => 'subsidy', 'item_name' => '1. เงินอุดหนุนรายหัว (การจัดการศึกษาขั้นพื้นฐาน)', 'rate_per_head' => 1980, 'eligible_count' => 312, 'calculated_amount' => 617760, 'note' => 'เฉลี่ยรวม อ.1-3 และ ป.1-6'],
         ['id' => 2, 'category' => 'subsidy', 'item_name' => '2. เงินอุดหนุนรายหัวส่วนเพิ่ม (Top Up) โรงเรียนคุณภาพประจำตำบล', 'rate_per_head' => 500, 'eligible_count' => 312, 'calculated_amount' => 156000, 'note' => 'สนับสนุนพัฒนาคุณภาพการศึกษา สพฐ.'],
@@ -347,19 +466,44 @@ function getRevenuesData(): array {
 }
 
 /**
+ * บันทึกข้อมูลรายรับ
+ */
+function saveRevenuesData(int $schoolId, array $revenues): bool {
+    $dir = getSchoolDataDir($schoolId);
+    @file_put_contents($dir . '/revenues.json', json_encode($revenues, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    return true;
+}
+
+/**
  * ดึงข้อมูลการจัดสรรงบประมาณตามฝ่าย
  */
-function getBudgetAllocations(): array {
+function getBudgetAllocations(?int $schoolId = null): array {
+    if ($schoolId === null && !empty($_SESSION['school_id'])) {
+        $schoolId = (int)$_SESSION['school_id'];
+    }
+    $schoolId = $schoolId ?: 1;
+
+    $dir = getSchoolDataDir($schoolId);
+    $customFile = $dir . '/budget_allocations.json';
+    if (file_exists($customFile)) {
+        $data = json_decode(@file_get_contents($customFile), true);
+        if (is_array($data) && !empty($data)) {
+            return $data;
+        }
+    }
+
     $db = Database::getConnection();
     if ($db) {
         try {
-            $stmt = $db->query("SELECT * FROM budget_allocations ORDER BY id ASC");
+            $stmt = $db->prepare("SELECT * FROM budget_allocations WHERE school_id = ? ORDER BY id ASC");
+            $stmt->execute([$schoolId]);
             $rows = $stmt->fetchAll();
             if (!empty($rows)) return $rows;
         } catch (Exception $e) {
             // fallback
         }
     }
+
     return [
         ['id' => 1, 'department_name' => 'ฝ่ายบริหารงานวิชาการ', 'percentage' => 60.0, 'allocated_amount' => 1050000, 'spent_amount' => 432500, 'remaining_amount' => 617500, 'color_hex' => '#2563eb', 'description' => 'พัฒนาหลักสูตร การจัดการเรียนการสอน สื่อ นวัตกรรม'],
         ['id' => 2, 'department_name' => 'ฝ่ายบริหารงานงบประมาณ', 'percentage' => 5.0, 'allocated_amount' => 87500, 'spent_amount' => 35000, 'remaining_amount' => 52500, 'color_hex' => '#0284c7', 'description' => 'การเงิน บัญชี พัสดุ สินทรัพย์ และแผนงานงบประมาณ'],
@@ -370,25 +514,47 @@ function getBudgetAllocations(): array {
 }
 
 /**
- * ดึงข้อมูลโครงการ
+ * บันทึกการจัดสรรงบประมาณ
  */
-function getProjectsData(): array {
-    // ตรวจสอบ session หากมีการเพิ่มโครงการใหม่
-    if (!isset($_SESSION['projects'])) {
-        $db = Database::getConnection();
-        if ($db) {
-            try {
-                $stmt = $db->query("SELECT * FROM projects ORDER BY id DESC");
-                $rows = $stmt->fetchAll();
-                if (!empty($rows)) {
-                    $_SESSION['projects'] = $rows;
-                    return $rows;
-                }
-            } catch (Exception $e) {
-                // fallback
-            }
+function saveBudgetAllocations(int $schoolId, array $allocations): bool {
+    $dir = getSchoolDataDir($schoolId);
+    @file_put_contents($dir . '/budget_allocations.json', json_encode($allocations, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    return true;
+}
+
+/**
+ * ดึงข้อมูลโครงการ (ตามโรงเรียน)
+ */
+function getProjectsData(?int $schoolId = null): array {
+    if ($schoolId === null && !empty($_SESSION['school_id'])) {
+        $schoolId = (int)$_SESSION['school_id'];
+    }
+    $schoolId = $schoolId ?: 1;
+
+    $dir = getSchoolDataDir($schoolId);
+    $customFile = $dir . '/projects.json';
+    if (file_exists($customFile)) {
+        $data = json_decode(@file_get_contents($customFile), true);
+        if (is_array($data)) {
+            return $data;
         }
-        $_SESSION['projects'] = [
+    }
+
+    $db = Database::getConnection();
+    if ($db) {
+        try {
+            $stmt = $db->prepare("SELECT * FROM projects WHERE school_id = ? ORDER BY id DESC");
+            $stmt->execute([$schoolId]);
+            $rows = $stmt->fetchAll();
+            if (!empty($rows)) return $rows;
+        } catch (Exception $e) {
+            // fallback
+        }
+    }
+
+    // ข้อมูลเริ่มต้นสำหรับโรงเรียนที่ 1
+    if ($schoolId === 1) {
+        return [
             [
                 'id' => 1,
                 'project_code' => 'กค.01/2568',
@@ -461,6 +627,264 @@ function getProjectsData(): array {
             ]
         ];
     }
-    return $_SESSION['projects'];
+
+    // สำหรับโรงเรียนใหม่ที่สร้างขึ้น
+    return [];
 }
+
+/**
+ * บันทึกหรือเพิ่มโครงการ
+ */
+function saveProject(int $schoolId, array $project): int {
+    $projects = getProjectsData($schoolId);
+    $id = isset($project['id']) ? (int)$project['id'] : 0;
+    
+    if ($id > 0) {
+        $updated = false;
+        foreach ($projects as $idx => $p) {
+            if ((int)$p['id'] === $id) {
+                $projects[$idx] = array_merge($p, $project);
+                $updated = true;
+                break;
+            }
+        }
+        if (!$updated) {
+            $projects[] = $project;
+        }
+    } else {
+        $maxId = 0;
+        foreach ($projects as $p) {
+            if ((int)$p['id'] > $maxId) $maxId = (int)$p['id'];
+        }
+        $id = $maxId + 1;
+        $project['id'] = $id;
+        $projects[] = $project;
+    }
+
+    $dir = getSchoolDataDir($schoolId);
+    @file_put_contents($dir . '/projects.json', json_encode($projects, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    return $id;
+}
+
+/**
+ * ลบโครงการ
+ */
+function deleteProject(int $schoolId, int $projectId): bool {
+    $projects = getProjectsData($schoolId);
+    $filtered = array_values(array_filter($projects, fn($p) => (int)$p['id'] !== $projectId));
+    $dir = getSchoolDataDir($schoolId);
+    return @file_put_contents($dir . '/projects.json', json_encode($filtered, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) !== false;
+}
+
+/**
+ * ดึงข้อมูลการเบิกจ่าย
+ */
+function getDisbursementsData(?int $schoolId = null): array {
+    if ($schoolId === null && !empty($_SESSION['school_id'])) {
+        $schoolId = (int)$_SESSION['school_id'];
+    }
+    $schoolId = $schoolId ?: 1;
+
+    $dir = getSchoolDataDir($schoolId);
+    $customFile = $dir . '/disbursements.json';
+    if (file_exists($customFile)) {
+        $data = json_decode(@file_get_contents($customFile), true);
+        if (is_array($data)) {
+            return $data;
+        }
+    }
+
+    if ($schoolId === 1) {
+        return [
+            [
+                'id' => 1,
+                'doc_no' => 'ขจ.001/2568',
+                'date' => '2024-11-15',
+                'project_id' => 1,
+                'project_name' => 'โครงการยกระดับผลสัมฤทธิ์ทางการเรียนและการทดสอบระดับชาติ (O-NET / NT)',
+                'payee' => 'นายสมควร สอนดี (วิทยากร)',
+                'category' => 'ค่าตอบแทน',
+                'amount' => 9000.00,
+                'status' => 'paid',
+                'note' => 'ค่าสมนาคุณวิทยากรติวเข้มรอบที่ 1'
+            ],
+            [
+                'id' => 2,
+                'doc_no' => 'ขจ.002/2568',
+                'date' => '2024-11-20',
+                'project_id' => 1,
+                'project_name' => 'โครงการยกระดับผลสัมฤทธิ์ทางการเรียนและการทดสอบระดับชาติ (O-NET / NT)',
+                'payee' => 'ร้านครัวคุณแม่',
+                'category' => 'ค่าใช้สอย',
+                'amount' => 11400.00,
+                'status' => 'paid',
+                'note' => 'ค่าอาหารกลางวันและอาหารว่างนักเรียนเข้าค่าย'
+            ],
+            [
+                'id' => 3,
+                'doc_no' => 'ขจ.003/2568',
+                'date' => '2024-12-05',
+                'project_id' => 4,
+                'project_name' => 'โครงการปรับปรุงซ่อมแซมอาคารสถานที่และพัฒนาสิ่งแวดล้อมเพื่อความปลอดภัย (Safety School)',
+                'payee' => 'หจก.ขอนแก่นการช่าง',
+                'category' => 'ค่าวัสดุ',
+                'amount' => 50000.00,
+                'status' => 'paid',
+                'note' => 'ค่าวัสดุปรับปรุงซ่อมแซมระบบไฟฟ้าและสีอาคาร'
+            ],
+        ];
+    }
+
+    return [];
+}
+
+/**
+ * บันทึกการเบิกจ่าย
+ */
+function saveDisbursement(int $schoolId, array $disbursement): int {
+    $disbursements = getDisbursementsData($schoolId);
+    $id = isset($disbursement['id']) ? (int)$disbursement['id'] : 0;
+
+    if ($id > 0) {
+        $updated = false;
+        foreach ($disbursements as $idx => $d) {
+            if ((int)$d['id'] === $id) {
+                $disbursements[$idx] = array_merge($d, $disbursement);
+                $updated = true;
+                break;
+            }
+        }
+        if (!$updated) {
+            $disbursements[] = $disbursement;
+        }
+    } else {
+        $maxId = 0;
+        foreach ($disbursements as $d) {
+            if ((int)$d['id'] > $maxId) $maxId = (int)$d['id'];
+        }
+        $id = $maxId + 1;
+        $disbursement['id'] = $id;
+        $disbursements[] = $disbursement;
+    }
+
+    $dir = getSchoolDataDir($schoolId);
+    @file_put_contents($dir . '/disbursements.json', json_encode($disbursements, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    return $id;
+}
+
+/**
+ * ลบการเบิกจ่าย
+ */
+function deleteDisbursement(int $schoolId, int $disbursementId): bool {
+    $disbursements = getDisbursementsData($schoolId);
+    $filtered = array_values(array_filter($disbursements, fn($d) => (int)$d['id'] !== $disbursementId));
+    $dir = getSchoolDataDir($schoolId);
+    return @file_put_contents($dir . '/disbursements.json', json_encode($filtered, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) !== false;
+}
+
+/**
+ * บันทึกรายการเบิกจ่ายทั้งหมดเป็นชุด
+ */
+function saveDisbursementsData(int $schoolId, array $disbursements): bool {
+    $dir = getSchoolDataDir($schoolId);
+    return @file_put_contents($dir . '/disbursements.json', json_encode($disbursements, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) !== false;
+}
+
+/**
+ * ดึงข้อมูลกิจกรรมพัฒนาผู้เรียน 4 กิจกรรมหลัก
+ */
+function getLearnerActivitiesData(?int $schoolId = null): array {
+    if ($schoolId === null && !empty($_SESSION['school_id'])) {
+        $schoolId = (int)$_SESSION['school_id'];
+    }
+    $schoolId = $schoolId ?: 1;
+
+    $dir = getSchoolDataDir($schoolId);
+    $customFile = $dir . '/learner_activities.json';
+    if (file_exists($customFile)) {
+        $data = json_decode(@file_get_contents($customFile), true);
+        if (is_array($data) && !empty($data)) {
+            return $data;
+        }
+    }
+
+    $students = getStudentsData();
+    $totalStudents = array_sum(array_column($students, 'total_count'));
+
+    return [
+        [
+            'id' => 1,
+            'name' => '1. กิจกรรมวิชาการ (ค่ายวิชาการ / ติวเข้ม / แข่งขันความสามารถ)',
+            'percentage' => 30.0,
+            'rate_per_head' => 138.0,
+            'description' => 'ส่งเสริมความเป็นเลิศทางวิชาการ ค่ายภาษาไทย ภาษาอังกฤษ วิทยาศาสตร์และคณิตศาสตร์',
+            'allocated' => round($totalStudents * 460 * 0.30)
+        ],
+        [
+            'id' => 2,
+            'name' => '2. กิจกรรมคุณธรรม จริยธรรม / ลูกเสือ เนตรนารี / ยุวกาชาด',
+            'percentage' => 25.0,
+            'rate_per_head' => 115.0,
+            'description' => 'การเข้าค่ายพักแรมลูกเสือ-เนตรนารี กิจกรรมค่ายคุณธรรม และปฏิบัติธรรมวันสำคัญ',
+            'allocated' => round($totalStudents * 460 * 0.25)
+        ],
+        [
+            'id' => 3,
+            'name' => '3. กิจกรรมทัศนศึกษาตามแหล่งเรียนรู้ (1 ครั้ง/ปีการศึกษา)',
+            'percentage' => 30.0,
+            'rate_per_head' => 138.0,
+            'description' => 'ยานพาหนะ ค่าผ่านทาง ค่าประกันอุบัติเหตุ และค่าเข้าชมพิพิธภัณฑ์/แหล่งเรียนรู้',
+            'allocated' => round($totalStudents * 460 * 0.30)
+        ],
+        [
+            'id' => 4,
+            'name' => '4. กิจกรรมการจัดการเรียนรู้เทคโนโลยีสารสนเทศ (ICT / AI Literacy)',
+            'percentage' => 15.0,
+            'rate_per_head' => 69.0,
+            'description' => 'การพัฒนาทักษะคอมพิวเตอร์ การเขียนโปรแกรม Coding และทักษะดิจิทัลในศตวรรษที่ 21',
+            'allocated' => round($totalStudents * 460 * 0.15)
+        ],
+    ];
+}
+
+/**
+ * บันทึกข้อมูลกิจกรรมพัฒนาผู้เรียน 4 กิจกรรมหลัก
+ */
+function saveLearnerActivitiesData(int $schoolId, array $activities): bool {
+    $dir = getSchoolDataDir($schoolId);
+    return @file_put_contents($dir . '/learner_activities.json', json_encode($activities, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) !== false;
+}
+
+/**
+ * ดึงรายการจำแนกงบประมาณ 4 หมวดของโครงการ
+ */
+function getProjectExpensesData(int $schoolId, int $projectId): array {
+    $dir = getSchoolDataDir($schoolId);
+    $file = $dir . '/project_expenses_' . $projectId . '.json';
+    if (file_exists($file)) {
+        $data = json_decode(@file_get_contents($file), true);
+        if (is_array($data) && !empty($data)) {
+            return $data;
+        }
+    }
+
+    // Default template items
+    return [
+        ['category' => 'ค่าตอบแทน', 'item' => 'ค่าสมนาคุณวิทยากรบรรยายและฝึกปฏิบัติการ', 'qty' => 15, 'unit' => 'ชั่วโมง', 'price' => 600, 'total' => 9000],
+        ['category' => 'ค่าใช้สอย', 'item' => 'ค่าอาหารกลางวันและอาหารว่างสำหรับผู้เข้าร่วมกิจกรรม', 'qty' => 76, 'unit' => 'คน', 'price' => 150, 'total' => 11400],
+        ['category' => 'ค่าวัสดุ', 'item' => 'ค่าวัสดุ อุปกรณ์ เอกสารประกอบการฝึกอบรม และข้อสอบ', 'qty' => 76, 'unit' => 'ชุด', 'price' => 323.68, 'total' => 24600],
+    ];
+}
+
+/**
+ * บันทึกรายการจำแนกงบประมาณ 4 หมวดของโครงการ
+ */
+function saveProjectExpensesData(int $schoolId, int $projectId, array $items): bool {
+    $dir = getSchoolDataDir($schoolId);
+    $file = $dir . '/project_expenses_' . $projectId . '.json';
+    return @file_put_contents($file, json_encode($items, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) !== false;
+}
+
+
+
 
