@@ -369,55 +369,422 @@ function updateSchoolData(int $schoolId, array $data): bool {
 }
 
 /**
- * ดึงข้อมูลปีงบประมาณ
+ * ค่าเริ่มต้นเกณฑ์อัตราเงินอุดหนุนและโครงการเรียนฟรี 15 ปี (มติ ครม. ปรับอัตราใหม่)
  */
-function getFiscalYearData(): array {
-    $db = Database::getConnection();
-    if ($db) {
-        try {
-            $stmt = $db->query("SELECT * FROM fiscal_years WHERE is_active = 1 LIMIT 1");
-            $row = $stmt->fetch();
-            if ($row) return $row;
-        } catch (Exception $e) {
-            // fallback
+function getDefaultSubsidyRates(int $year = 2568): array {
+    // อัตราก้าวหน้าตามมติ ครม.
+    if ($year >= 2569) {
+        return [
+            'kindergarten' => 1908,
+            'primary' => 2194,
+            'secondary_lower' => 3716,
+            'secondary_upper' => 4236,
+            'topup' => 500,
+            'textbook' => 650,
+            'uniform' => 400,
+            'stationery' => 440,
+            'activity' => 460,
+            'lunch_per_day' => 24,
+            'lunch_days' => 200,
+            'poor_fund' => 1500,
+        ];
+    } elseif ($year >= 2568) {
+        return [
+            'kindergarten' => 1854,
+            'primary' => 2122,
+            'secondary_lower' => 3608,
+            'secondary_upper' => 4018,
+            'topup' => 500,
+            'textbook' => 650,
+            'uniform' => 400,
+            'stationery' => 440,
+            'activity' => 460,
+            'lunch_per_day' => 24,
+            'lunch_days' => 200,
+            'poor_fund' => 1500,
+        ];
+    } else {
+        return [
+            'kindergarten' => 1800,
+            'primary' => 2050,
+            'secondary_lower' => 3500,
+            'secondary_upper' => 3800,
+            'topup' => 500,
+            'textbook' => 650,
+            'uniform' => 380,
+            'stationery' => 400,
+            'activity' => 460,
+            'lunch_per_day' => 24,
+            'lunch_days' => 200,
+            'poor_fund' => 1500,
+        ];
+    }
+}
+
+/**
+ * ดึงการตั้งค่าปีงบประมาณและอัตราเงินอุดหนุน
+ */
+function getFiscalYearConfig(?int $schoolId = null): array {
+    if ($schoolId === null && !empty($_SESSION['school_id'])) {
+        $schoolId = (int)$_SESSION['school_id'];
+    }
+    $schoolId = $schoolId ?: 1;
+
+    $dir = getSchoolDataDir($schoolId);
+    $configFile = $dir . '/fiscal_year_config.json';
+    if (file_exists($configFile)) {
+        $data = json_decode(@file_get_contents($configFile), true);
+        if (is_array($data) && !empty($data['active_year'])) {
+            return $data;
         }
     }
+
+    $defaultYear = 2568;
     return [
-        'id' => 1,
-        'year' => 2568,
-        'is_active' => 1,
-        'start_date' => '2024-10-01',
-        'end_date' => '2025-09-30',
-        'total_students' => 312,
-        'teacher_count' => 22
+        'active_year' => $defaultYear,
+        'fiscal_years' => [
+            ['id' => 1, 'year' => 2567, 'is_active' => false, 'start_date' => '2023-10-01', 'end_date' => '2024-09-30'],
+            ['id' => 2, 'year' => 2568, 'is_active' => true, 'start_date' => '2024-10-01', 'end_date' => '2025-09-30'],
+            ['id' => 3, 'year' => 2569, 'is_active' => false, 'start_date' => '2025-10-01', 'end_date' => '2026-09-30'],
+            ['id' => 4, 'year' => 2570, 'is_active' => false, 'start_date' => '2026-10-01', 'end_date' => '2027-09-30'],
+        ],
+        'rates' => getDefaultSubsidyRates($defaultYear),
+        'proposal_window' => [
+            'is_open' => true,
+            'open_date' => '2024-10-01',
+            'close_date' => '2025-01-31',
+            'notice' => "เปิดรับการเสนอโครงการตามแผนปฏิบัติการประจำปีงบประมาณ พ.ศ. {$defaultYear}",
+        ]
     ];
 }
 
 /**
- * ดึงข้อมูลนักเรียน
+ * ดึงอัตราเงินอุดหนุนรายหัวและโครงการเรียนฟรี 15 ปีของโรงเรียน
  */
-function getStudentsData(): array {
+function getFiscalYearRates(?int $schoolId = null): array {
+    $config = getFiscalYearConfig($schoolId);
+    return $config['rates'] ?? getDefaultSubsidyRates($config['active_year'] ?? 2568);
+}
+
+/**
+ * บันทึกการตั้งค่าปีงบประมาณและอัตราเงินอุดหนุน
+ */
+function saveFiscalYearConfig(int $schoolId, array $config, bool $syncRevenues = true): bool {
+    $dir = getSchoolDataDir($schoolId);
+    $saved = @file_put_contents($dir . '/fiscal_year_config.json', json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) !== false;
+
+    // อัปเดตตาราง fiscal_years ใน MySQL ถ้ามี
     $db = Database::getConnection();
     if ($db) {
         try {
-            $stmt = $db->query("SELECT * FROM students ORDER BY id ASC");
+            $activeYear = (int)($config['active_year'] ?? 2568);
+            $db->prepare("UPDATE fiscal_years SET is_active = 0 WHERE school_id = ?")->execute([$schoolId]);
+            $stmt = $db->prepare("INSERT INTO fiscal_years (school_id, year, is_active, start_date, end_date) 
+                                  VALUES (?, ?, 1, ?, ?) 
+                                  ON DUPLICATE KEY UPDATE is_active = 1");
+            $stmt->execute([
+                $schoolId, 
+                $activeYear, 
+                ($activeYear - 544) . '-10-01', 
+                ($activeYear - 543) . '-09-30'
+            ]);
+        } catch (Exception $e) {
+            // ignore
+        }
+    }
+
+    if ($syncRevenues) {
+        syncRevenuesFromStudentsAndRates($schoolId);
+    }
+
+    return $saved;
+}
+
+/**
+ * ซิงค์ยอดประมาณการรายรับสถานศึกษาจากจำนวนนักเรียนและอัตราเงินอุดหนุนปีงบประมาณโดยอัตโนมัติ
+ */
+function syncRevenuesFromStudentsAndRates(int $schoolId): array {
+    $rates = getFiscalYearRates($schoolId);
+    $students = getStudentsData($schoolId);
+    $totalStudents = array_sum(array_column($students, 'total_count'));
+
+    // คำนวณจำนวนนักเรียนแยกช่วงชั้น
+    $kCount = 0;
+    $pCount = 0;
+    $sCount = 0;
+    $uCount = 0;
+    foreach ($students as $s) {
+        $stg = $s['stage'] ?? 'ประถม';
+        $cnt = (int)($s['total_count'] ?? 0);
+        if ($stg === 'อนุบาล') $kCount += $cnt;
+        elseif ($stg === 'มัธยมต้น') $sCount += $cnt;
+        elseif ($stg === 'มัธยมปลาย') $uCount += $cnt;
+        else $pCount += $cnt;
+    }
+
+    $kRate = (float)($rates['kindergarten'] ?? 1854);
+    $pRate = (float)($rates['primary'] ?? 2122);
+    $sRate = (float)($rates['secondary_lower'] ?? 3608);
+    $uRate = (float)($rates['secondary_upper'] ?? 4018);
+
+    // ยอดเงินอุดหนุนรายหัวรวม
+    $generalSubsidy = ($kCount * $kRate) + ($pCount * $pRate) + ($sCount * $sRate) + ($uCount * $uRate);
+    $avgRatePerHead = $totalStudents > 0 ? round($generalSubsidy / $totalStudents) : $pRate;
+
+    // รายรับเดิมของโรงเรียน (ถ้ามี เพื่อรักษาหมวด 7, 9, 10, 11)
+    $existing = getRevenuesData($schoolId);
+    $existingMap = [];
+    foreach ($existing as $ex) {
+        $existingMap[$ex['id']] = $ex;
+    }
+
+    $lunchPerDay = (float)($rates['lunch_per_day'] ?? 24);
+    $lunchDays = (int)($rates['lunch_days'] ?? 200);
+    $lunchRatePerHead = $lunchPerDay * $lunchDays;
+    $lunchStudents = $kCount + $pCount; // สถิติจัดสรรเฉพาะอนุบาลและประถม
+    $lunchTotal = $lunchStudents * $lunchRatePerHead;
+
+    $poorCount = isset($existingMap[7]) ? (int)$existingMap[7]['eligible_count'] : round($totalStudents * 0.45);
+    $poorRate = (float)($rates['poor_fund'] ?? 1500);
+
+    $newRevenues = [
+        [
+            'id' => 1,
+            'category' => 'subsidy',
+            'item_name' => '1. เงินอุดหนุนรายหัว (การจัดการศึกษาขั้นพื้นฐาน)',
+            'rate_per_head' => $avgRatePerHead,
+            'eligible_count' => $totalStudents,
+            'calculated_amount' => $generalSubsidy,
+            'note' => "คำนวณตามเกณฑ์ปีงบประมาณ: อ. {$kCount} คน (@{$kRate}) + ป. {$pCount} คน (@{$pRate})" . ($sCount > 0 ? " + ม.ต้น {$sCount} คน (@{$sRate})" : '')
+        ],
+        [
+            'id' => 2,
+            'category' => 'subsidy',
+            'item_name' => '2. เงินอุดหนุนรายหัวส่วนเพิ่ม (Top Up) โรงเรียนคุณภาพประจำตำบล',
+            'rate_per_head' => (float)($rates['topup'] ?? 500),
+            'eligible_count' => $totalStudents,
+            'calculated_amount' => $totalStudents * (float)($rates['topup'] ?? 500),
+            'note' => 'สนับสนุนพัฒนาคุณภาพการศึกษา สพฐ. ตามเป้าหมายนักเรียนรวม'
+        ],
+        [
+            'id' => 3,
+            'category' => 'welfare',
+            'item_name' => '3. ค่าหนังสือเรียน (โครงการเรียนฟรี 15 ปี)',
+            'rate_per_head' => (float)($rates['textbook'] ?? 650),
+            'eligible_count' => $totalStudents,
+            'calculated_amount' => $totalStudents * (float)($rates['textbook'] ?? 650),
+            'note' => 'จัดสรรตามเกณฑ์ระดับการศึกษา สพฐ.'
+        ],
+        [
+            'id' => 4,
+            'category' => 'welfare',
+            'item_name' => '4. ค่าเครื่องแบบนักเรียน (2 ชุด/คน/ปี)',
+            'rate_per_head' => (float)($rates['uniform'] ?? 400),
+            'eligible_count' => $totalStudents,
+            'calculated_amount' => $totalStudents * (float)($rates['uniform'] ?? 400),
+            'note' => 'อัตราเฉลี่ยเครื่องแบบนักเรียนตามเกณฑ์ปีงบประมาณ'
+        ],
+        [
+            'id' => 5,
+            'category' => 'welfare',
+            'item_name' => '5. ค่าอุปกรณ์การเรียน (สมุด ดินสอ ยางลบ สี ไม้บรรทัด)',
+            'rate_per_head' => (float)($rates['stationery'] ?? 440),
+            'eligible_count' => $totalStudents,
+            'calculated_amount' => $totalStudents * (float)($rates['stationery'] ?? 440),
+            'note' => 'จัดสรร 2 ภาคเรียน/ปีการศึกษา'
+        ],
+        [
+            'id' => 6,
+            'category' => 'activity',
+            'item_name' => '6. ค่ากิจกรรมพัฒนาผู้เรียน (4 กิจกรรมหลัก สพฐ.)',
+            'rate_per_head' => (float)($rates['activity'] ?? 460),
+            'eligible_count' => $totalStudents,
+            'calculated_amount' => $totalStudents * (float)($rates['activity'] ?? 460),
+            'note' => 'วิชาการ, คุณธรรม, ทัศนศึกษา, เทคโนโลยี ICT'
+        ],
+        [
+            'id' => 7,
+            'category' => 'welfare',
+            'item_name' => '7. เงินปัจจัยพื้นฐานนักเรียนยากจน (กสศ. / สพฐ.)',
+            'rate_per_head' => $poorRate,
+            'eligible_count' => $poorCount,
+            'calculated_amount' => $poorCount * $poorRate,
+            'note' => $existingMap[7]['note'] ?? "จำนวนนักเรียนที่ผ่านเกณฑ์คัดกรอง {$poorCount} คน"
+        ],
+        [
+            'id' => 8,
+            'category' => 'lunch',
+            'item_name' => '8. ค่าอาหารกลางวัน (อปท. จัดสรรผ่าน อบต./เทศบาล)',
+            'rate_per_head' => $lunchRatePerHead,
+            'eligible_count' => $lunchStudents,
+            'calculated_amount' => $lunchTotal,
+            'note' => "อัตรา {$lunchPerDay} บ./วัน จำนวน {$lunchDays} วันทำการ (เฉพาะ อ.1-3 และ ป.1-6)"
+        ],
+        [
+            'id' => 9,
+            'category' => 'fundraising',
+            'item_name' => '9. เงินระดมทรัพยากร / เงินบริจาค / ผ้าป่าเพื่อการศึกษา',
+            'rate_per_head' => 0,
+            'eligible_count' => 1,
+            'calculated_amount' => isset($existingMap[9]) ? (float)$existingMap[9]['calculated_amount'] : 185000,
+            'note' => $existingMap[9]['note'] ?? 'ศิษย์เก่าและคณะกรรมการสถานศึกษาจัดทอดผ้าป่า'
+        ],
+        [
+            'id' => 10,
+            'category' => 'revenue',
+            'item_name' => '10. เงินรายได้สถานศึกษา (ค่าเช่าร้านค้าสหกรณ์, ดอกเบี้ย)',
+            'rate_per_head' => 0,
+            'eligible_count' => 1,
+            'calculated_amount' => isset($existingMap[10]) ? (float)$existingMap[10]['calculated_amount'] : 64000,
+            'note' => $existingMap[10]['note'] ?? 'ดอกเบี้ยเงินฝากธนาคาร และเงินบำรุงสหกรณ์'
+        ],
+        [
+            'id' => 11,
+            'category' => 'other',
+            'item_name' => '11. รายรับอื่น ๆ (เงินอุดหนุนเฉพาะกิจ/โครงการพิเศษ)',
+            'rate_per_head' => 0,
+            'eligible_count' => 1,
+            'calculated_amount' => isset($existingMap[11]) ? (float)$existingMap[11]['calculated_amount'] : 50000,
+            'note' => $existingMap[11]['note'] ?? 'เงินสนับสนุนจาก อบจ. โครงการส่งเสริมดนตรีพื้นบ้าน'
+        ],
+    ];
+
+    saveRevenuesData($schoolId, $newRevenues);
+    return $newRevenues;
+}
+
+/**
+ * ดึงข้อมูลปีงบประมาณปัจจุบัน
+ */
+function getFiscalYearData(?int $schoolId = null): array {
+    $config = getFiscalYearConfig($schoolId);
+    $activeYear = (int)($config['active_year'] ?? 2568);
+    $students = getStudentsData($schoolId);
+    $totalStudents = array_sum(array_column($students, 'total_count'));
+
+    return [
+        'id' => 1,
+        'year' => $activeYear,
+        'is_active' => 1,
+        'start_date' => ($activeYear - 544) . '-10-01',
+        'end_date' => ($activeYear - 543) . '-09-30',
+        'total_students' => $totalStudents,
+        'teacher_count' => 22,
+        'rates' => $config['rates'] ?? getDefaultSubsidyRates($activeYear),
+        'proposal_window' => $config['proposal_window'] ?? [],
+    ];
+}
+
+/**
+ * ดึงข้อมูลนักเรียน (แยกตามโรงเรียน)
+ */
+function getStudentsData(?int $schoolId = null): array {
+    if ($schoolId === null && !empty($_SESSION['school_id'])) {
+        $schoolId = (int)$_SESSION['school_id'];
+    }
+    $schoolId = $schoolId ?: 1;
+
+    $dir = getSchoolDataDir($schoolId);
+    $customFile = $dir . '/students.json';
+    if (file_exists($customFile)) {
+        $data = json_decode(@file_get_contents($customFile), true);
+        if (is_array($data) && !empty($data)) {
+            return $data;
+        }
+    }
+
+    $db = Database::getConnection();
+    if ($db) {
+        try {
+            $stmt = $db->prepare("SELECT * FROM students WHERE school_id = ? ORDER BY id ASC");
+            $stmt->execute([$schoolId]);
             $rows = $stmt->fetchAll();
             if (!empty($rows)) return $rows;
         } catch (Exception $e) {
             // fallback
         }
     }
+
     return [
-        ['id' => 1, 'grade_level' => 'อนุบาล 1', 'stage' => 'อนุบาล', 'male_count' => 12, 'female_count' => 14, 'total_count' => 26],
-        ['id' => 2, 'grade_level' => 'อนุบาล 2', 'stage' => 'อนุบาล', 'male_count' => 15, 'female_count' => 16, 'total_count' => 31],
-        ['id' => 3, 'grade_level' => 'อนุบาล 3', 'stage' => 'อนุบาล', 'male_count' => 14, 'female_count' => 15, 'total_count' => 29],
-        ['id' => 4, 'grade_level' => 'ประถมศึกษาปีที่ 1', 'stage' => 'ประถม', 'male_count' => 20, 'female_count' => 18, 'total_count' => 38],
-        ['id' => 5, 'grade_level' => 'ประถมศึกษาปีที่ 2', 'stage' => 'ประถม', 'male_count' => 19, 'female_count' => 17, 'total_count' => 36],
-        ['id' => 6, 'grade_level' => 'ประถมศึกษาปีที่ 3', 'stage' => 'ประถม', 'male_count' => 21, 'female_count' => 19, 'total_count' => 40],
-        ['id' => 7, 'grade_level' => 'ประถมศึกษาปีที่ 4', 'stage' => 'ประถม', 'male_count' => 18, 'female_count' => 20, 'total_count' => 38],
-        ['id' => 8, 'grade_level' => 'ประถมศึกษาปีที่ 5', 'stage' => 'ประถม', 'male_count' => 20, 'female_count' => 18, 'total_count' => 38],
-        ['id' => 9, 'grade_level' => 'ประถมศึกษาปีที่ 6', 'stage' => 'ประถม', 'male_count' => 19, 'female_count' => 17, 'total_count' => 36],
+        ['id' => 1, 'school_id' => $schoolId, 'grade_level' => 'อนุบาล 1', 'stage' => 'อนุบาล', 'male_count' => 12, 'female_count' => 14, 'total_count' => 26],
+        ['id' => 2, 'school_id' => $schoolId, 'grade_level' => 'อนุบาล 2', 'stage' => 'อนุบาล', 'male_count' => 15, 'female_count' => 16, 'total_count' => 31],
+        ['id' => 3, 'school_id' => $schoolId, 'grade_level' => 'อนุบาล 3', 'stage' => 'อนุบาล', 'male_count' => 14, 'female_count' => 15, 'total_count' => 29],
+        ['id' => 4, 'school_id' => $schoolId, 'grade_level' => 'ประถมศึกษาปีที่ 1', 'stage' => 'ประถม', 'male_count' => 20, 'female_count' => 18, 'total_count' => 38],
+        ['id' => 5, 'school_id' => $schoolId, 'grade_level' => 'ประถมศึกษาปีที่ 2', 'stage' => 'ประถม', 'male_count' => 19, 'female_count' => 17, 'total_count' => 36],
+        ['id' => 6, 'school_id' => $schoolId, 'grade_level' => 'ประถมศึกษาปีที่ 3', 'stage' => 'ประถม', 'male_count' => 21, 'female_count' => 19, 'total_count' => 40],
+        ['id' => 7, 'school_id' => $schoolId, 'grade_level' => 'ประถมศึกษาปีที่ 4', 'stage' => 'ประถม', 'male_count' => 18, 'female_count' => 20, 'total_count' => 38],
+        ['id' => 8, 'school_id' => $schoolId, 'grade_level' => 'ประถมศึกษาปีที่ 5', 'stage' => 'ประถม', 'male_count' => 20, 'female_count' => 18, 'total_count' => 38],
+        ['id' => 9, 'school_id' => $schoolId, 'grade_level' => 'ประถมศึกษาปีที่ 6', 'stage' => 'ประถม', 'male_count' => 19, 'female_count' => 17, 'total_count' => 36],
     ];
+}
+
+/**
+ * บันทึกข้อมูลนักเรียน (แยกตามโรงเรียนและอัปเดตยอดรวมโรงเรียน)
+ */
+function saveStudentsData(int $schoolId, array $students): bool {
+    $dir = getSchoolDataDir($schoolId);
+    $saved = @file_put_contents($dir . '/students.json', json_encode($students, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)) !== false;
+
+    // คำนวณยอดรวมนักเรียนทั้งหมด
+    $totalStudents = array_sum(array_column($students, 'total_count'));
+
+    // 1. อัปเดต student_count ใน school_info.json
+    $schoolInfoFile = $dir . '/school_info.json';
+    if (file_exists($schoolInfoFile)) {
+        $info = json_decode(@file_get_contents($schoolInfoFile), true);
+        if (is_array($info)) {
+            $info['student_count'] = $totalStudents;
+            @file_put_contents($schoolInfoFile, json_encode($info, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        }
+    }
+
+    // 2. อัปเดต Session
+    if (!empty($_SESSION['school']) && (int)($_SESSION['school']['id'] ?? 0) === $schoolId) {
+        $_SESSION['school']['student_count'] = $totalStudents;
+    }
+
+    // 3. อัปเดต schools_data.json
+    $allSchools = getAllSchoolsList();
+    foreach ($allSchools as &$s) {
+        if ((int)$s['id'] === $schoolId) {
+            $s['student_count'] = $totalStudents;
+            $s['studentCount'] = $totalStudents;
+            break;
+        }
+    }
+    $allSchoolsFile = __DIR__ . '/../config/schools_data.json';
+    if (file_exists($allSchoolsFile)) {
+        @file_put_contents($allSchoolsFile, json_encode($allSchools, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+    }
+
+    // 4. บันทึกลง MySQL ถ้าต่อเชื่อมอยู่
+    $db = Database::getConnection();
+    if ($db) {
+        try {
+            $stmtDel = $db->prepare("DELETE FROM students WHERE school_id = ?");
+            $stmtDel->execute([$schoolId]);
+            $stmtIns = $db->prepare("INSERT INTO students (id, school_id, fiscal_year_id, grade_level, stage, male_count, female_count, total_count) VALUES (?, ?, 1, ?, ?, ?, ?, ?)");
+            foreach ($students as $idx => $st) {
+                $id = !empty($st['id']) ? (int)$st['id'] : ($idx + 1);
+                $stmtIns->execute([
+                    $id,
+                    $schoolId,
+                    $st['grade_level'] ?? '',
+                    $st['stage'] ?? 'ประถม',
+                    (int)($st['male_count'] ?? 0),
+                    (int)($st['female_count'] ?? 0),
+                    (int)($st['total_count'] ?? 0),
+                ]);
+            }
+            // อัปเดต student_count ในตาราง schools
+            $stmtUpd = $db->prepare("UPDATE schools SET student_count = ? WHERE id = ?");
+            $stmtUpd->execute([$totalStudents, $schoolId]);
+        } catch (Exception $e) {
+            // ignore
+        }
+    }
+
+    return $saved;
 }
 
 /**
@@ -808,7 +1175,7 @@ function getLearnerActivitiesData(?int $schoolId = null): array {
         }
     }
 
-    $students = getStudentsData();
+    $students = getStudentsData($schoolId);
     $totalStudents = array_sum(array_column($students, 'total_count'));
 
     return [

@@ -42,11 +42,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
         saveRevenuesData($currentSchoolId, $newRevenues);
         $successMsg = 'บันทึกการประมาณการรายรับสถานศึกษาเรียบร้อยแล้ว';
+    } elseif ($_POST['action'] === 'sync_with_fiscal_year') {
+        syncRevenuesFromStudentsAndRates($currentSchoolId);
+        $successMsg = 'ซิงค์และคำนวณยอดเงินอุดหนุนรายหัวและหมวดต่าง ๆ ตามข้อมูลนักเรียนและอัตราปีงบประมาณเรียบร้อยแล้ว';
     }
 }
 
 $revenues = getRevenuesData($currentSchoolId);
 $totalRevenue = array_sum(array_column($revenues, 'calculated_amount'));
+$rates = getFiscalYearRates($currentSchoolId);
+$students = getStudentsData($currentSchoolId);
+$totalStudents = array_sum(array_column($students, 'total_count'));
 ?>
 
 <main class="flex-1 p-4 sm:p-6 overflow-y-auto max-w-7xl mx-auto w-full">
@@ -64,7 +70,18 @@ $totalRevenue = array_sum(array_column($revenues, 'calculated_amount'));
             </h2>
             <p class="text-xs text-slate-500">เงินอุดหนุนทั่วไป, เงินเรียนฟรี 15 ปี, กสศ., อาหารกลางวัน, เงินระดมทรัพยากร และเงินรายได้สถานศึกษา</p>
         </div>
-        <div class="flex items-center gap-2.5">
+        <div class="flex items-center gap-2.5 flex-wrap">
+            <form method="POST" class="inline">
+                <input type="hidden" name="action" value="sync_with_fiscal_year">
+                <button type="submit" class="inline-flex items-center gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold px-3.5 py-2 rounded-xl shadow-xs transition-all" title="คำนวณยอดเงินใหม่ตามจำนวนนักเรียนและเกณฑ์อัตราปีงบประมาณ">
+                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                    <span>ซิงค์คำนวณยอดอัตโนมัติ</span>
+                </button>
+            </form>
+            <a href="fiscal_year.php" class="inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-3.5 py-2 rounded-xl border border-slate-300 transition-colors">
+                <i data-lucide="calendar" class="w-4 h-4"></i>
+                <span>ตั้งค่าอัตราปีงบประมาณ</span>
+            </a>
             <button type="button" onclick="openRevenueModal()" class="inline-flex items-center gap-2 bg-blue-900 hover:bg-blue-800 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-xs transition-all">
                 <i data-lucide="edit-3" class="w-4 h-4"></i>
                 <span>แก้ไขรายการรายรับ</span>

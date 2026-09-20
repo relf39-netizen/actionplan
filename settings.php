@@ -91,6 +91,23 @@ define('DB_PASS', 'รหัสผ่าน MySQL');</pre>
                 </a>
             </div>
         </div>
+
+        <!-- Fiscal Year & Subsidy Rates Quick Access -->
+        <div class="bg-white rounded-xl p-5 border border-slate-200 shadow-xs space-y-4 lg:col-span-2">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-2">
+                <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    <i data-lucide="calendar" class="w-4 h-4 text-amber-600"></i>
+                    <span>การตั้งค่าปีงบประมาณและอัตราเงินอุดหนุนรายหัวตามช่วงชั้น</span>
+                </h3>
+                <a href="fiscal_year.php" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-900 hover:bg-blue-800 text-white text-xs font-bold rounded-xl shadow-xs transition-colors">
+                    <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+                    <span>เปิดหน้าตั้งค่าปีงบประมาณ & อัตราเงินอุดหนุน</span>
+                </a>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+                เนื่องจากอัตราเงินอุดหนุนรายหัวและงบประมาณตามมติคณะรัฐมนตรีมีการปรับเปลี่ยนตามแต่ละปีงบประมาณ (แบบขั้นบันได 4 ปี) ท่านสามารถกำหนดปีงบประมาณที่เปิดใช้งาน ปรับอัตราเงินอุดหนุนของแต่ละช่วงชั้น (ก่อนประถม, ประถม, มัธยมศึกษา) และซิงค์คำนวณยอดเงินไปยังประมาณการรายรับและข้อมูลนักเรียนได้ทันที
+            </p>
+        </div>
     </div>
 </main>
 

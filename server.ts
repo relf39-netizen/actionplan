@@ -31,6 +31,7 @@ const PHP_SYSTEM_FILES = [
   'action_plan.php',
   'reports.php',
   'settings.php',
+  'fiscal_year.php',
   'users.php',
   'super_admin.php',
   'export_doc.php',

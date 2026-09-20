@@ -3,10 +3,11 @@ $pageTitle = 'แดชบอร์ดภาพรวม';
 require_once __DIR__ . '/includes/header.php';
 require_once __DIR__ . '/includes/sidebar.php';
 
-$students = getStudentsData();
-$revenues = getRevenuesData();
-$allocations = getBudgetAllocations();
-$projects = getProjectsData();
+$currentSchoolId = !empty($_SESSION['school_id']) ? (int)$_SESSION['school_id'] : 1;
+$students = getStudentsData($currentSchoolId);
+$revenues = getRevenuesData($currentSchoolId);
+$allocations = getBudgetAllocations($currentSchoolId);
+$projects = getProjectsData($currentSchoolId);
 
 $totalStudents = array_sum(array_column($students, 'total_count'));
 $totalRevenue = array_sum(array_column($revenues, 'calculated_amount'));
