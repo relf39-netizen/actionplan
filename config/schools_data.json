@@ -1,0 +1,21 @@
+[
+  {
+    "id": 1,
+    "schoolCode": "1000000001",
+    "smisCode": "10000001",
+    "isActive": true,
+    "schoolKey": "SCH-10000001",
+    "adminUsername": "admin",
+    "adminPasswordPlain": "123456",
+    "name": "โรงเรียนเด็กเรียนดี",
+    "province": "จังหวัดตัวอย่าง",
+    "educationArea": "สำนักงานเขตพื้นที่การศึกษาประถมศึกษาตัวอย่าง เขต 1",
+    "directorName": "นายตัวอย่าง ผู้นำการศึกษา (ผู้อำนวยการโรงเรียน)",
+    "phone": "02-000-0000",
+    "email": "dekreeandee_school@obec.mail.go.th",
+    "studentCount": 180,
+    "projectCount": 1,
+    "totalBudget": 746600,
+    "notes": "สถานศึกษาเริ่มต้น พร้อมสำหรับการใช้งานจริง"
+  }
+]
