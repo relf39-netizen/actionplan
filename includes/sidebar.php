@@ -1,6 +1,8 @@
 <?php
 $currentPage = basename($_SERVER['PHP_SELF'], '.php');
 
+$currentTab = $_GET['tab'] ?? '';
+
 $menuItems = [
     ['id' => 'dashboard', 'file' => 'dashboard.php', 'label' => '1. ภาพรวม (Dashboard)', 'icon' => 'layout-dashboard'],
     ['id' => 'school', 'file' => 'school.php', 'label' => '2. ข้อมูลโรงเรียน', 'icon' => 'school'],
@@ -10,13 +12,14 @@ $menuItems = [
     ['id' => 'budget', 'file' => 'budget.php', 'label' => '6. จัดสรรงบประมาณ', 'icon' => 'pie-chart'],
     ['id' => 'learner_activities', 'file' => 'learner_activities.php', 'label' => '7. กิจกรรมพัฒนาผู้เรียน', 'icon' => 'sparkles'],
     ['id' => 'ai_project_writer', 'file' => 'ai_project_writer.php', 'label' => '8. เขียนโครงการด้วย AI', 'icon' => 'bot', 'badge' => 'AI สพฐ.'],
-    ['id' => 'projects', 'file' => 'projects.php', 'label' => '9. โครงการ', 'icon' => 'folder-git-2'],
-    ['id' => 'expenses', 'file' => 'expenses.php', 'label' => '10. รายละเอียดงบโครงการ', 'icon' => 'file-spreadsheet'],
-    ['id' => 'disbursements', 'file' => 'disbursements.php', 'label' => '11. การเบิกจ่าย / ใช้เงิน', 'icon' => 'receipt'],
-    ['id' => 'action_plan', 'file' => 'action_plan.php', 'label' => '12. แผนปฏิบัติการประจำปี', 'icon' => 'target'],
-    ['id' => 'reports', 'file' => 'reports.php', 'label' => '13. รายงาน', 'icon' => 'file-text'],
-    ['id' => 'settings', 'file' => 'settings.php', 'label' => '14. ตั้งค่าระบบ', 'icon' => 'settings'],
-    ['id' => 'users', 'file' => 'users.php', 'label' => '15. ผู้ใช้งาน', 'icon' => 'shield-alert'],
+    ['id' => 'projects', 'file' => 'projects.php', 'label' => '8. แบบเสนอโครงการ', 'icon' => 'folder-git-2'],
+    ['id' => 'projects_approved', 'file' => 'projects.php?tab=approved', 'label' => '8.1 โครงการที่อนุมัติแล้ว', 'icon' => 'check-circle-2', 'badge' => 'อนุมัติแล้ว'],
+    ['id' => 'expenses', 'file' => 'expenses.php', 'label' => '9. รายละเอียดงบโครงการ', 'icon' => 'file-spreadsheet'],
+    ['id' => 'disbursements', 'file' => 'disbursements.php', 'label' => '10. การเบิกจ่าย / ใช้เงิน', 'icon' => 'receipt'],
+    ['id' => 'action_plan', 'file' => 'action_plan.php', 'label' => '11. แผนปฏิบัติการประจำปี', 'icon' => 'target'],
+    ['id' => 'reports', 'file' => 'reports.php', 'label' => '12. รายงาน', 'icon' => 'file-text'],
+    ['id' => 'settings', 'file' => 'settings.php', 'label' => '13. ตั้งค่าระบบ', 'icon' => 'settings'],
+    ['id' => 'users', 'file' => 'users.php', 'label' => '14. ผู้ใช้งาน', 'icon' => 'shield-alert'],
 ];
 ?>
 <!-- Sidebar Navigation -->
@@ -32,7 +35,14 @@ $menuItems = [
     <nav class="flex-1 p-3 space-y-1 overflow-y-auto">
         <?php foreach ($menuItems as $item): ?>
             <?php 
-                $isActive = ($currentPage === $item['id']) || ($currentPage === '' && $item['id'] === 'dashboard');
+                $isActive = false;
+                if ($item['id'] === 'projects_approved') {
+                    $isActive = ($currentPage === 'projects' && $currentTab === 'approved');
+                } elseif ($item['id'] === 'projects') {
+                    $isActive = ($currentPage === 'projects' && $currentTab !== 'approved');
+                } else {
+                    $isActive = ($currentPage === $item['id']) || ($currentPage === '' && $item['id'] === 'dashboard');
+                }
             ?>
             <a href="<?= $item['file'] ?>" class="flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold transition-colors <?= $isActive ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900' ?>">
                 <div class="flex items-center gap-2.5">

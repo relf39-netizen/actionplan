@@ -12,10 +12,15 @@ $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
 
 $projectName = trim($input['project_name'] ?? '');
 $department = trim($input['department'] ?? 'ฝ่ายบริหารงานวิชาการ');
-$responsible = trim($input['responsible_person'] ?? 'นายพิเชษฐ์ ปัญญาวงศ์');
+$responsible = trim($input['responsible_person'] ?? ($input['proposer_name'] ?? 'คุณครูมุ่งมั่น นามสกุลตั้งใจสอน'));
+$proposerPosition = trim($input['proposer_position'] ?? 'ครูผู้รับผิดชอบโครงการ');
+$endorserName = trim($input['endorser_name'] ?? 'คุณครูสอนดี นามสกุลเก่งมาก');
+$endorserPosition = trim($input['endorser_position'] ?? 'หัวหน้ากลุ่มสาระการเรียนรู้ / หัวหน้างานแผนงาน');
+$approverName = trim($input['approver_name'] ?? 'ดร.สมศักดิ์ พัฒนศึกษา');
+$approverPosition = trim($input['approver_position'] ?? 'ผู้อำนวยการโรงเรียน');
 $budget = floatval($input['budget'] ?? 45000);
 $schoolLevel = trim($input['school_level'] ?? 'ประถมศึกษา');
-$targetAudience = trim($input['target_audience'] ?? 'นักเรียนและครู');
+$targetAudience = trim($input['target_audience'] ?? 'นักเรียนและครูผู้สอนทุกคน');
 $keyObjectives = trim($input['key_objectives'] ?? '');
 $apiKey = trim($input['api_key'] ?? '') ?: (getenv('GEMINI_API_KEY') ?: ($_SESSION['gemini_api_key'] ?? ''));
 
@@ -38,7 +43,9 @@ if (!empty($apiKey)) {
 โดยมีข้อมูลเบื้องต้นดังนี้:
 - ชื่อโครงการ: {$projectName}
 - ฝ่ายที่รับผิดชอบ: {$department}
-- ผู้รับผิดชอบโครงการ: {$responsible}
+- ผู้เสนอโครงการ: {$responsible} (ตำแหน่ง: {$proposerPosition})
+- ผู้เห็นชอบโครงการ: {$endorserName} (ตำแหน่ง: {$endorserPosition})
+- ผู้อนุมัติโครงการ: {$approverName} (ตำแหน่ง: {$approverPosition})
 - งบประมาณรวมที่ขอจัดสรร: " . number_format($budget, 2) . " บาท
 - กลุ่มเป้าหมาย: {$targetAudience}
 - วัตถุประสงค์/เป้าหมายเฉพาะ: {$keyObjectives}
@@ -46,15 +53,20 @@ if (!empty($apiKey)) {
 กรุณาส่งกลับเป็น JSON ที่มีโครงสร้างต่อไปนี้เท่านั้น (ห้ามใส่ Markdown code block หรือข้อความอื่นนอกเหนือจาก JSON):
 {
   \"projectName\": \"{$projectName}\",
-  \"projectType\": \"โครงการใหม่ / โครงการต่อเนื่อง\",
+  \"projectType\": \"โครงการต่อเนื่องตามแผนปฏิบัติการประจำปี\",
   \"alignment\": \"สอดคล้องกับยุทธศาสตร์สถานศึกษา ข้อที่ 1 และนโยบาย สพฐ. ด้านการยกระดับคุณภาพการศึกษา\",
   \"department\": \"{$department}\",
   \"responsiblePerson\": \"{$responsible}\",
+  \"proposerPosition\": \"{$proposerPosition}\",
+  \"endorserName\": \"{$endorserName}\",
+  \"endorserPosition\": \"{$endorserPosition}\",
+  \"approverName\": \"{$approverName}\",
+  \"approverPosition\": \"{$approverPosition}\",
   \"rationale\": \"หลักการและเหตุผลอย่างละเอียด 2-3 ย่อหน้า อ้างอิงนโยบาย สพฐ. พ.ร.บ.การศึกษาแห่งชาติ และสภาพปัญหาความจำเป็น\",
   \"objectives\": [\"ข้อ 1...\", \"ข้อ 2...\", \"ข้อ 3...\"],
   \"quantitativeTargets\": [\"นักเรียนจำนวน... คน ร้อยละ...\", \"ครูจำนวน... คน\"],
   \"qualitativeTargets\": [\"นักเรียนมีทักษะ... ในระดับดีขึ้นไป\", \"ผลสัมฤทธิ์ทางการเรียนเพิ่มขึ้น...\"],
-  \"location\": \"โรงเรียนและห้องปฏิบัติการ\",
+  \"location\": \"โรงเรียนและแหล่งเรียนรู้ที่เกี่ยวข้อง\",
   \"duration\": \"ตลอดปีการศึกษา\",
   \"pdcaSchedule\": [
     {\"phase\": \"ขั้นวางแผน (Plan)\", \"activities\": \"ประชุมคณะทำงาน สำรวจความต้องการ กำหนดกรอบงบประมาณ\", \"period\": \"พฤษภาคม\", \"responsible\": \"{$responsible}\"},
@@ -63,13 +75,13 @@ if (!empty($apiKey)) {
     {\"phase\": \"ขั้นปรับปรุงพัฒนา (Act)\", \"activities\": \"สรุปรายงานผลโครงการ นำเสนอผู้บริหาร และถอดบทเรียน\", \"period\": \"กุมภาพันธ์\", \"responsible\": \"{$responsible}\"}
   ],
   \"budgetItems\": [
-    {\"category\": \"ค่าตอบแทน\", \"item\": \"ค่าวิทยากรบรรยายและฝึกปฏิบัติการ\", \"quantity\": 12, \"unit\": \"ชั่วโมง\", \"unitPrice\": 600, \"total\": 7200},
-    {\"category\": \"ค่าใช้สอย\", \"item\": \"ค่าอาหารกลางวันและเครื่องดื่มสำหรับผู้เข้าอบรม\", \"quantity\": 50, \"unit\": \"มื้อ\", \"unitPrice\": 80, \"total\": 4000},
-    {\"category\": \"ค่าวัสดุ\", \"item\": \"ค่าวัสดุ อุปกรณ์ และเอกสารประกอบการจัดกิจกรรม\", \"quantity\": 1, \"unit\": \"ชุด\", \"unitPrice\": " . ($budget - 11200) . ", \"total\": " . ($budget - 11200) . "}
+    {\"category\": \"ค่าตอบแทน\", \"item\": \"ค่าตอบแทนวิทยากรผู้เชี่ยวชาญ\", \"quantity\": 1, \"unit\": \"รายการ\", \"unitPrice\": 10000, \"total\": 10000},
+    {\"category\": \"ค่าใช้สอย\", \"item\": \"ค่าอาหารกลางวันและอาหารว่าง\", \"quantity\": 1, \"unit\": \"รายการ\", \"unitPrice\": 20000, \"total\": 20000},
+    {\"category\": \"ค่าวัสดุ\", \"item\": \"ค่าวัสดุอุปกรณ์และคู่มือประกอบการเรียนรู้\", \"quantity\": 1, \"unit\": \"ชุด\", \"unitPrice\": 15000, \"total\": 15000}
   ],
-  \"indicators\": [\"ร้อยละ 85 ของนักเรียนผ่านเกณฑ์การประเมิน\", \"ร้อยละ 90 ของผู้เข้าร่วมกิจกรรมมีความพึงพอใจในระดับดีมาก\"],
-  \"evaluationMethods\": [\"แบบทดสอบวัดความรู้\", \"แบบประเมินความพึงพอใจ\", \"การสังเกตพฤติกรรมการเรียนรู้\"],
-  \"expectedOutcomes\": [\"นักเรียนมีผลสัมฤทธิ์ทางการเรียนและทักษะที่จำเป็นสูงขึ้น\", \"โรงเรียนมีแนวปฏิบัติที่ดี (Best Practice) ในการจัดการเรียนรู้\"]
+  \"indicators\": [\"ร้อยละ 85 ของนักเรียนกลุ่มเป้าหมายมีผลสัมฤทธิ์ผ่านเกณฑ์\"],
+  \"evaluationMethods\": [\"แบบทดสอบวัดผลสัมฤทธิ์\", \"แบบประเมินความพึงพอใจ\"],
+  \"expectedOutcomes\": [\"ผู้เรียนได้รับการพัฒนาทักษะเต็มตามศักยภาพ\"]
 }";
 
     $apiUrl = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" . urlencode($apiKey);
@@ -118,6 +130,12 @@ if (!$generated) {
         'alignment' => 'สอดคล้องกับยุทธศาสตร์สถานศึกษา ด้านคุณภาพผู้เรียน และนโยบาย สพฐ. ข้อที่ 1 ยกระดับคุณภาพการศึกษา',
         'department' => $department,
         'responsiblePerson' => $responsible,
+        'proposerName' => $responsible,
+        'proposerPosition' => $proposerPosition,
+        'endorserName' => $endorserName,
+        'endorserPosition' => $endorserPosition,
+        'approverName' => $approverName,
+        'approverPosition' => $approverPosition,
         'rationale' => "ตามที่สำนักงานคณะกรรมการการศึกษาขั้นพื้นฐาน (สพฐ.) ได้กำหนดนโยบายและจุดเน้นเพื่อพัฒนาคุณภาพการศึกษาขั้นพื้นฐาน ให้ผู้เรียนมีความรู้ ทักษะในศตวรรษที่ 21 และมีคุณลักษณะอันพึงประสงค์ โดยมุ่งเน้นการยกระดับคุณภาพผู้เรียนให้เต็มตามศักยภาพนั้น\n\nโรงเรียนได้ตระหนักถึงความสำคัญในการพัฒนาผู้เรียนในโครงการ \"{$projectName}\" เพื่อตอบสนองต่อความต้องการจำเป็นของสถานศึกษา ส่งเสริมการจัดการเรียนรู้เชิงรุก (Active Learning) และเสริมสร้างทักษะที่สอดคล้องกับความก้าวหน้าทางเทคโนโลยีและบริบทสังคมปัจจุบัน จึงได้จัดทำโครงการนี้ขึ้นเพื่อขับเคลื่อนการศึกษาให้เกิดผลสัมฤทธิ์อย่างเป็นรูปธรรม",
         'objectives' => [
             "เพื่อส่งเสริมและพัฒนาศักยภาพของนักเรียนในกิจกรรม {$projectName} ให้มีคุณภาพตามเกณฑ์มาตรฐาน สพฐ.",

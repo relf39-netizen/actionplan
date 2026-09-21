@@ -3,20 +3,29 @@ $pageTitle = 'เขียนโครงการด้วย AI (แบบฟ�
 require_once __DIR__ . '/includes/header.php';
 require_once __DIR__ . '/includes/sidebar.php';
 
-// Handle save project into session/database
+// Handle save project into persistent storage (JSON/DB) and session
 $saveMessage = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'save_project') {
     $pName = trim($_POST['p_name'] ?? '');
     $pDept = trim($_POST['p_dept'] ?? 'ฝ่ายบริหารงานวิชาการ');
-    $pResp = trim($_POST['p_resp'] ?? 'ผู้รับผิดชอบโครงการ');
+    $pResp = trim($_POST['p_resp'] ?? 'คุณครูมุ่งมั่น นามสกุลตั้งใจสอน');
+    $pRespPos = trim($_POST['p_resp_pos'] ?? 'ครูผู้รับผิดชอบโครงการ');
+    $pEndorser = trim($_POST['p_endorser'] ?? 'คุณครูสอนดี นามสกุลเก่งมาก');
+    $pEndorserPos = trim($_POST['p_endorser_pos'] ?? 'หัวหน้ากลุ่มสาระการเรียนรู้ / หัวหน้างานแผนงาน');
+    $pApprover = trim($_POST['p_approver'] ?? ($school['director_name'] ?? 'ดร.สมศักดิ์ พัฒนศึกษา'));
+    $pApproverPos = trim($_POST['p_approver_pos'] ?? ('ผู้อำนวยการโรงเรียน' . ($school['name'] ?? '')));
     $pBudget = floatval($_POST['p_budget'] ?? 0);
     $pRationale = trim($_POST['p_rationale'] ?? '');
+    $pTarget = trim($_POST['p_target'] ?? 'นักเรียนและครูผู้สอนทุกคน');
+    $pDuration = trim($_POST['p_duration'] ?? ('ตลอดปีการศึกษา ' . $fiscalYear['year']));
 
     if (!empty($pName)) {
-        if (!isset($_SESSION['projects'])) {
-            getProjectsData();
+        $schoolId = !empty($_SESSION['school_id']) ? (int)$_SESSION['school_id'] : 1;
+        $projects = getProjectsData($schoolId);
+        $newId = 1;
+        foreach ($projects as $p) {
+            if ((int)$p['id'] >= $newId) $newId = (int)$p['id'] + 1;
         }
-        $newId = count($_SESSION['projects']) + 1;
         $code = 'กค.' . str_pad($newId, 2, '0', STR_PAD_LEFT) . '/' . $fiscalYear['year'];
         
         $newProject = [
@@ -25,16 +34,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             'project_name' => $pName,
             'department' => $pDept,
             'responsible_person' => $pResp,
+            'proposer_position' => $pRespPos,
+            'endorser_name' => $pEndorser,
+            'endorser_position' => $pEndorserPos,
+            'approver_name' => $pApprover,
+            'approver_position' => $pApproverPos,
             'allocated_budget' => $pBudget,
+            'original_budget' => $pBudget,
             'spent_budget' => 0,
             'remaining_budget' => $pBudget,
             'status' => 'not_started',
             'approval_status' => 'pending',
-            'duration' => 'ตลอดปีการศึกษา ' . $fiscalYear['year'],
+            'duration' => $pDuration,
             'rationale' => $pRationale,
+            'target_group' => $pTarget,
+            'created_at' => date('Y-m-d H:i:s'),
         ];
-        array_unshift($_SESSION['projects'], $newProject);
-        $saveMessage = "บันทึกโครงการ \"$pName\" เข้าสู่แผนปฏิบัติการเรียบร้อยแล้ว!";
+        
+        // Save into persistent school storage (JSON / DB)
+        saveProject($schoolId, $newProject);
+        
+        // Update session projects
+        $_SESSION['projects'] = getProjectsData($schoolId);
+        
+        $saveMessage = "บันทึกโครงการ \"$pName\" (รหัส $code) เข้าสู่แบบเสนอโครงการและแผนปฏิบัติการประจำปีเรียบร้อยแล้ว!";
     }
 }
 ?>
@@ -125,8 +148,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
             <div class="grid grid-cols-2 gap-3">
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">ผู้รับผิดชอบโครงการ</label>
-                    <input type="text" id="inp-resp" class="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none" value="นางสาวกนกพร ใจมั่น">
+                    <label class="block text-xs font-bold text-slate-700 mb-1">ผู้เสนอโครงการ</label>
+                    <input type="text" id="inp-resp" class="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none" value="คุณครูมุ่งมั่น นามสกุลตั้งใจสอน" placeholder="เช่น คุณครูมุ่งมั่น นามสกุลตั้งใจสอน">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">ตำแหน่งผู้เสนอโครงการ</label>
+                    <input type="text" id="inp-resp-pos" class="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none" value="ครูผู้รับผิดชอบโครงการ" placeholder="เช่น ครูผู้รับผิดชอบโครงการ">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">ผู้เห็นชอบโครงการ <span class="text-rose-500">*</span></label>
+                    <input type="text" id="inp-endorser" class="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none" value="คุณครูสอนดี นามสกุลเก่งมาก" placeholder="เช่น คุณครูสอนดี นามสกุลเก่งมาก">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">ตำแหน่งผู้เห็นชอบโครงการ</label>
+                    <input type="text" id="inp-endorser-pos" class="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none" value="หัวหน้ากลุ่มสาระการเรียนรู้ / หัวหน้างานแผนงาน" placeholder="เช่น หัวหน้ากลุ่มสาระการเรียนรู้ / หัวหน้างานแผนงาน">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">ผู้อนุมัติโครงการ</label>
+                    <input type="text" id="inp-approver" class="w-full text-xs px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none" value="<?= htmlspecialchars($school['director_name'] ?? 'ดร.สมศักดิ์ พัฒนศึกษา') ?>" placeholder="เช่น ดร.สมศักดิ์ พัฒนศึกษา">
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-700 mb-1">กลุ่มเป้าหมาย</label>
@@ -179,8 +224,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         <input type="hidden" name="p_name" id="save-p-name">
                         <input type="hidden" name="p_dept" id="save-p-dept">
                         <input type="hidden" name="p_resp" id="save-p-resp">
+                        <input type="hidden" name="p_resp_pos" id="save-p-resp-pos">
+                        <input type="hidden" name="p_endorser" id="save-p-endorser">
+                        <input type="hidden" name="p_endorser_pos" id="save-p-endorser-pos">
+                        <input type="hidden" name="p_approver" id="save-p-approver">
+                        <input type="hidden" name="p_approver_pos" id="save-p-approver-pos">
                         <input type="hidden" name="p_budget" id="save-p-budget">
                         <input type="hidden" name="p_rationale" id="save-p-rationale">
+                        <input type="hidden" name="p_target" id="save-p-target">
+                        <input type="hidden" name="p_duration" id="save-p-duration">
                         <button type="button" onclick="submitSaveProject()" class="px-3 py-1.5 bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors shadow-xs">
                             <i data-lucide="save" class="w-3.5 h-3.5"></i>
                             <span>บันทึกเข้าแผนงาน</span>
@@ -204,7 +256,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     <div><strong>ลักษณะโครงการ:</strong> <span id="view-type">โครงการต่อเนื่องตามแผนปฏิบัติการประจำปี</span></div>
                     <div><strong>ความสอดคล้องกับยุทธศาสตร์:</strong> <span id="view-align">สอดคล้องกับยุทธศาสตร์สถานศึกษา ด้านคุณภาพผู้เรียน และนโยบาย สพฐ. ยกระดับคุณภาพการศึกษา</span></div>
                     <div><strong>ฝ่ายที่รับผิดชอบ:</strong> <span id="view-dept">ฝ่ายบริหารงานวิชาการ</span></div>
-                    <div><strong>ผู้รับผิดชอบโครงการ:</strong> <span id="view-resp">นางสาวกนกพร ใจมั่น</span></div>
+                    <div><strong>ผู้เสนอโครงการ:</strong> <span id="view-resp">คุณครูมุ่งมั่น นามสกุลตั้งใจสอน</span> (<span id="view-resp-pos">ครูผู้รับผิดชอบโครงการ</span>)</div>
+                    <div><strong>ผู้เห็นชอบโครงการ:</strong> <span id="view-endorser">คุณครูสอนดี นามสกุลเก่งมาก</span> (<span id="view-endorser-pos">หัวหน้ากลุ่มสาระการเรียนรู้ / หัวหน้างานแผนงาน</span>)</div>
                 </div>
 
                 <!-- 2. Rationale -->
@@ -356,14 +409,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     <div class="grid grid-cols-2 gap-6 text-center">
                         <div class="space-y-1">
                             <p>ลงชื่อ.......................................................... ผู้เสนอโครงการ</p>
-                            <p class="font-bold">(<span id="sign-resp">นางสาวกนกพร ใจมั่น</span>)</p>
-                            <p class="text-slate-600 text-xs">ตำแหน่ง ครูผู้รับผิดชอบโครงการ</p>
+                            <p class="font-bold">(<span id="sign-resp">คุณครูมุ่งมั่น นามสกุลตั้งใจสอน</span>)</p>
+                            <p class="text-slate-600 text-xs">ตำแหน่ง <span id="sign-resp-pos">ครูผู้รับผิดชอบโครงการ</span></p>
                             <p class="text-slate-400 text-xs">วันที่ ..... เดือน .................... พ.ศ. .........</p>
                         </div>
                         <div class="space-y-1">
                             <p>ลงชื่อ.......................................................... ผู้เห็นชอบโครงการ</p>
-                            <p class="font-bold">(นายพิเชษฐ์ ปัญญาวงศ์)</p>
-                            <p class="text-slate-600 text-xs">ตำแหน่ง หัวหน้ากลุ่มงานแผนงานและงบประมาณ</p>
+                            <p class="font-bold">(<span id="sign-endorser">คุณครูสอนดี นามสกุลเก่งมาก</span>)</p>
+                            <p class="text-slate-600 text-xs">ตำแหน่ง <span id="sign-endorser-pos">หัวหน้ากลุ่มสาระการเรียนรู้ / หัวหน้างานแผนงาน</span></p>
                             <p class="text-slate-400 text-xs">วันที่ ..... เดือน .................... พ.ศ. .........</p>
                         </div>
                     </div>
@@ -375,8 +428,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         </p>
                         <div class="mt-4 space-y-1">
                             <p>ลงชื่อ.......................................................... ผู้อนุมัติโครงการ</p>
-                            <p class="font-bold">(<?= htmlspecialchars($school['director_name'] ?? 'ดร.สมศักดิ์ พัฒนศึกษา') ?>)</p>
-                            <p class="text-slate-600 text-xs">ตำแหน่ง ผู้อำนวยการโรงเรียน<?= htmlspecialchars($school['name'] ?? '') ?></p>
+                            <p class="font-bold">(<span id="sign-approver"><?= htmlspecialchars($school['director_name'] ?? 'ดร.สมศักดิ์ พัฒนศึกษา') ?></span>)</p>
+                            <p class="text-slate-600 text-xs">ตำแหน่ง <span id="sign-approver-pos">ผู้อำนวยการโรงเรียน<?= htmlspecialchars($school['name'] ?? '') ?></span></p>
                             <p class="text-slate-400 text-xs">วันที่ ..... เดือน .................... พ.ศ. .........</p>
                         </div>
                     </div>
@@ -418,13 +471,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 </div>
 
 <script>
-    // Presets data
+    // Presets data with fictitious exemplary educator names
     const presets = [
         {
             name: 'โครงการยกระดับผลสัมฤทธิ์ทางการเรียนและการทดสอบระดับชาติ (O-NET / NT)',
             dept: 'ฝ่ายบริหารงานวิชาการ',
             budget: 45000,
-            resp: 'นางสาวกนกพร ใจมั่น',
+            resp: 'คุณครูมุ่งมั่น นามสกุลตั้งใจสอน',
+            respPos: 'ครูผู้รับผิดชอบโครงการ',
+            endorser: 'คุณครูสอนดี นามสกุลเก่งมาก',
+            endorserPos: 'หัวหน้ากลุ่มสาระการเรียนรู้ / หัวหน้างานแผนงาน',
             target: 'นักเรียนชั้น ป.3 และ ป.6 ทุกคน',
             obj: 'มุ่งเน้นการติวเข้มและฝึกทำข้อสอบเสมือนจริงในกลุ่มสาระคณิตศาสตร์ วิทยาศาสตร์ และภาษาอังกฤษ'
         },
@@ -432,7 +488,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             name: 'โครงการพัฒนาทักษะดิจิทัลและการรู้เท่าทันปัญญาประดิษฐ์ (AI Literacy) เพื่อการเรียนรู้ในศตวรรษที่ 21',
             dept: 'ฝ่ายบริหารงานวิชาการ',
             budget: 40000,
-            resp: 'นายพิเชษฐ์ ปัญญาวงศ์',
+            resp: 'คุณครูมุ่งมั่น นามสกุลตั้งใจสอน',
+            respPos: 'ครูผู้รับผิดชอบโครงการคอมพิวเตอร์',
+            endorser: 'คุณครูสอนดี นามสกุลเก่งมาก',
+            endorserPos: 'หัวหน้ากลุ่มงานเทคโนโลยีสารสนเทศ',
             target: 'นักเรียนชั้น ป.4 - ป.6 และครูผู้สอนทุกคน',
             obj: 'ส่งเสริมการใช้เครื่องมือ AI ในการเรียนรู้ สื่อการสอน และการสืบค้นข้อมูลอย่างปลอดภัยและมีจริยธรรม'
         },
@@ -440,7 +499,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             name: 'โครงการส่งเสริมคุณธรรม จริยธรรม และวิถีประชาธิปไตยในสถานศึกษา (โรงเรียนสุจริต)',
             dept: 'ฝ่ายบริหารงานบุคคล',
             budget: 25000,
-            resp: 'นายสมชาย วงศ์สว่าง',
+            resp: 'คุณครูมุ่งมั่น นามสกุลตั้งใจสอน',
+            respPos: 'ครูแกนนำโรงเรียนคุณธรรม',
+            endorser: 'คุณครูสอนดี นามสกุลเก่งมาก',
+            endorserPos: 'หัวหน้ากลุ่มบริหารงานบุคคล',
             target: 'นักเรียนทุกระดับชั้นและบุคลากรในโรงเรียน',
             obj: 'ปลูกฝังความซื่อสัตย์สุจริต วินัย จิตอาสา และค่านิยมต่อต้านการทุจริตคอร์รัปชัน'
         },
@@ -448,7 +510,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             name: 'โครงการปรับปรุงซ่อมแซมอาคารสถานที่และพัฒนาสิ่งแวดล้อมเพื่อความปลอดภัย (Safety School)',
             dept: 'ฝ่ายบริหารงานทั่วไป',
             budget: 50000,
-            resp: 'นายอำนวย สุขเกษม',
+            resp: 'คุณครูมุ่งมั่น นามสกุลตั้งใจสอน',
+            respPos: 'ครูผู้ดูแลงานอาคารสถานที่',
+            endorser: 'คุณครูสอนดี นามสกุลเก่งมาก',
+            endorserPos: 'หัวหน้ากลุ่มบริหารงานทั่วไป',
             target: 'อาคารเรียน ห้องน้ำ สนามเด็กเล่น และระบบไฟฟ้า',
             obj: 'ปรับปรุงจุดเสี่ยง ซ่อมแซมระบบไฟฟ้า ห้องน้ำ และจัดระเบียบสภาพแวดล้อมให้ปลอดภัยตามเกณฑ์สถานศึกษาปลอดภัย'
         },
@@ -456,7 +521,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             name: 'โครงการเกษตรเพื่ออาหารกลางวันตามหลักปรัชญาของเศรษฐกิจพอเพียง',
             dept: 'ฝ่ายบริหารงานทั่วไป',
             budget: 35000,
-            resp: 'นายวิชัย สุวรรณโชติ',
+            resp: 'คุณครูมุ่งมั่น นามสกุลตั้งใจสอน',
+            respPos: 'ครูผู้ดูแลแปลงเกษตรพอเพียง',
+            endorser: 'คุณครูสอนดี นามสกุลเก่งมาก',
+            endorserPos: 'หัวหน้าโครงการอาหารกลางวัน',
             target: 'นักเรียนแกนนำ แปลงผัก โรงเห็ด บ่อปลา',
             obj: 'ฝึกทักษะอาชีพการเกษตร ปลูกผักปลอดสารพิษ นำผลผลิตสมทบโครงการอาหารกลางวัน'
         }
@@ -468,7 +536,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         document.getElementById('inp-name').value = p.name;
         document.getElementById('inp-dept').value = p.dept;
         document.getElementById('inp-budget').value = p.budget;
-        document.getElementById('inp-resp').value = p.resp;
+        document.getElementById('inp-resp').value = p.resp || 'คุณครูมุ่งมั่น นามสกุลตั้งใจสอน';
+        if (document.getElementById('inp-resp-pos')) document.getElementById('inp-resp-pos').value = p.respPos || 'ครูผู้รับผิดชอบโครงการ';
+        if (document.getElementById('inp-endorser')) document.getElementById('inp-endorser').value = p.endorser || 'คุณครูสอนดี นามสกุลเก่งมาก';
+        if (document.getElementById('inp-endorser-pos')) document.getElementById('inp-endorser-pos').value = p.endorserPos || 'หัวหน้ากลุ่มสาระการเรียนรู้ / หัวหน้างานแผนงาน';
         document.getElementById('inp-target').value = p.target;
         document.getElementById('inp-objectives').value = p.obj;
         generateProjectAI();
@@ -510,6 +581,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         const dept = document.getElementById('inp-dept').value;
         const budget = parseFloat(document.getElementById('inp-budget').value) || 0;
         const resp = document.getElementById('inp-resp').value.trim();
+        const respPos = document.getElementById('inp-resp-pos') ? document.getElementById('inp-resp-pos').value.trim() : 'ครูผู้รับผิดชอบโครงการ';
+        const endorser = document.getElementById('inp-endorser') ? document.getElementById('inp-endorser').value.trim() : 'คุณครูสอนดี นามสกุลเก่งมาก';
+        const endorserPos = document.getElementById('inp-endorser-pos') ? document.getElementById('inp-endorser-pos').value.trim() : 'หัวหน้ากลุ่มสาระการเรียนรู้ / หัวหน้างานแผนงาน';
+        const approver = document.getElementById('inp-approver') ? document.getElementById('inp-approver').value.trim() : 'ดร.สมศักดิ์ พัฒนศึกษา';
+        const approverPos = document.getElementById('inp-approver-pos') ? document.getElementById('inp-approver-pos').value.trim() : 'ผู้อำนวยการโรงเรียน';
         const target = document.getElementById('inp-target').value.trim();
         const objectives = document.getElementById('inp-objectives').value.trim();
         const userKey = localStorage.getItem('gemini_api_key') || '';
@@ -531,6 +607,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     department: dept,
                     budget: budget,
                     responsible_person: resp,
+                    proposer_name: resp,
+                    proposer_position: respPos,
+                    endorser_name: endorser,
+                    endorser_position: endorserPos,
+                    approver_name: approver,
+                    approver_position: approverPos,
                     target_audience: target,
                     key_objectives: objectives,
                     api_key: userKey
@@ -556,8 +638,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         document.getElementById('view-type').innerText = data.projectType || 'โครงการต่อเนื่องตามแผนปฏิบัติการประจำปี';
         document.getElementById('view-align').innerText = data.alignment || 'สอดคล้องกับยุทธศาสตร์สถานศึกษา';
         document.getElementById('view-dept').innerText = data.department || '';
-        document.getElementById('view-resp').innerText = data.responsiblePerson || '';
-        document.getElementById('sign-resp').innerText = data.responsiblePerson || '';
+        
+        const pName = data.proposerName || data.responsiblePerson || (document.getElementById('inp-resp') ? document.getElementById('inp-resp').value : '') || 'คุณครูมุ่งมั่น นามสกุลตั้งใจสอน';
+        const pPos = data.proposerPosition || (document.getElementById('inp-resp-pos') ? document.getElementById('inp-resp-pos').value : '') || 'ครูผู้รับผิดชอบโครงการ';
+        const eName = data.endorserName || (document.getElementById('inp-endorser') ? document.getElementById('inp-endorser').value : '') || 'คุณครูสอนดี นามสกุลเก่งมาก';
+        const ePos = data.endorserPosition || (document.getElementById('inp-endorser-pos') ? document.getElementById('inp-endorser-pos').value : '') || 'หัวหน้ากลุ่มสาระการเรียนรู้ / หัวหน้างานแผนงาน';
+        const aName = data.approverName || (document.getElementById('inp-approver') ? document.getElementById('inp-approver').value : '') || 'ดร.สมศักดิ์ พัฒนศึกษา';
+        const aPos = data.approverPosition || (document.getElementById('inp-approver-pos') ? document.getElementById('inp-approver-pos').value : '') || 'ผู้อำนวยการโรงเรียน';
+
+        document.getElementById('view-resp').innerText = pName;
+        if (document.getElementById('view-resp-pos')) document.getElementById('view-resp-pos').innerText = pPos;
+        if (document.getElementById('view-endorser')) document.getElementById('view-endorser').innerText = eName;
+        if (document.getElementById('view-endorser-pos')) document.getElementById('view-endorser-pos').innerText = ePos;
+
+        document.getElementById('sign-resp').innerText = pName;
+        if (document.getElementById('sign-resp-pos')) document.getElementById('sign-resp-pos').innerText = pPos;
+        if (document.getElementById('sign-endorser')) document.getElementById('sign-endorser').innerText = eName;
+        if (document.getElementById('sign-endorser-pos')) document.getElementById('sign-endorser-pos').innerText = ePos;
+        if (document.getElementById('sign-approver')) document.getElementById('sign-approver').innerText = aName;
+        if (document.getElementById('sign-approver-pos')) document.getElementById('sign-approver-pos').innerText = aPos;
+
         document.getElementById('view-rationale').innerText = data.rationale || '';
 
         // Objectives
@@ -645,8 +745,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         document.getElementById('save-p-name').value = document.getElementById('view-name').innerText;
         document.getElementById('save-p-dept').value = document.getElementById('view-dept').innerText;
         document.getElementById('save-p-resp').value = document.getElementById('view-resp').innerText;
+        if (document.getElementById('save-p-resp-pos')) {
+            document.getElementById('save-p-resp-pos').value = document.getElementById('view-resp-pos') ? document.getElementById('view-resp-pos').innerText : 'ครูผู้รับผิดชอบโครงการ';
+        }
+        if (document.getElementById('save-p-endorser')) {
+            document.getElementById('save-p-endorser').value = document.getElementById('view-endorser') ? document.getElementById('view-endorser').innerText : 'คุณครูสอนดี นามสกุลเก่งมาก';
+        }
+        if (document.getElementById('save-p-endorser-pos')) {
+            document.getElementById('save-p-endorser-pos').value = document.getElementById('view-endorser-pos') ? document.getElementById('view-endorser-pos').innerText : 'หัวหน้ากลุ่มสาระการเรียนรู้ / หัวหน้างานแผนงาน';
+        }
+        if (document.getElementById('save-p-approver')) {
+            document.getElementById('save-p-approver').value = document.getElementById('sign-approver') ? document.getElementById('sign-approver').innerText : 'ดร.สมศักดิ์ พัฒนศึกษา';
+        }
+        if (document.getElementById('save-p-approver-pos')) {
+            document.getElementById('save-p-approver-pos').value = document.getElementById('sign-approver-pos') ? document.getElementById('sign-approver-pos').innerText : 'ผู้อำนวยการโรงเรียน';
+        }
         document.getElementById('save-p-budget').value = document.getElementById('view-budget-total').innerText.replace(/,/g, '');
         document.getElementById('save-p-rationale').value = document.getElementById('view-rationale').innerText;
+        if (document.getElementById('save-p-target')) {
+            document.getElementById('save-p-target').value = document.getElementById('inp-target') ? document.getElementById('inp-target').value : 'นักเรียนและครูผู้สอนทุกคน';
+        }
+        if (document.getElementById('save-p-duration')) {
+            document.getElementById('save-p-duration').value = document.getElementById('view-duration') ? document.getElementById('view-duration').innerText : '';
+        }
         document.getElementById('form-save-project').submit();
     }
 </script>
