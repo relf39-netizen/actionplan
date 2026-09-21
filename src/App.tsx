@@ -80,6 +80,8 @@ export default function App() {
 
   // Count pending projects
   const pendingProjectsCount = projects.filter((p) => !p.approvedBy).length;
+  // Count approved active projects
+  const approvedProjectsCount = projects.filter((p) => p.approvedBy && p.status !== 'completed').length;
 
   // Handle Login
   const handleLoginSubmit = (e: React.FormEvent) => {
@@ -320,6 +322,7 @@ export default function App() {
           onLogout={handleLogout}
           currentUser={currentUser}
           pendingCount={pendingProjectsCount}
+          approvedCount={approvedProjectsCount}
         />
 
         {/* Main Content Area */}
@@ -418,12 +421,21 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'projects' && (
+            {(activeTab === 'projects' || activeTab === 'approved_projects') && (
               <ProjectsView
                 projects={projects}
                 currentUser={currentUser}
                 departments={allocations}
                 activeFiscalYear={activeFiscalYear}
+                school={school}
+                initialSubTab={activeTab === 'approved_projects' ? 'approved' : 'all'}
+                onSelectSubTab={(tab) => {
+                  if (tab === 'approved') {
+                    setActiveTab('approved_projects');
+                  } else {
+                    setActiveTab('projects');
+                  }
+                }}
                 onUpdateProjects={(updated) => setProjects(updated)}
                 onOpenExpensesForProject={handleOpenExpensesForProject}
                 onNavigateToAiWriter={() => setActiveTab('ai_project_writer')}

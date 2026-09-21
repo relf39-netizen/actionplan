@@ -224,6 +224,12 @@ export interface Project {
   attachmentName?: string; // ชื่อเอกสารหรือไฟล์แนบรายละเอียดโครงการ
   attachmentUrl?: string; // ลิงก์หรือไฟล์แนบรายละเอียดโครงการ
   fullProposalDetails?: any; // รายละเอียดโครงการที่เสนอฉบับสมบูรณ์ (รวม AI Proposal)
+  closedBy?: string; // ผู้กดปิดโครงการ (เจ้าหน้าที่แผนงาน/Admin)
+  closedDate?: string; // วันที่ปิดโครงการเสร็จสิ้น
+  originalProposedBudget?: number; // วงเงินงบประมาณที่เสนอขอเบื้องต้น
+  budgetAdjustedBy?: string; // ผู้ปรับเปลี่ยนงบประมาณ (จนท.แผน/ผอ.)
+  budgetAdjustedDate?: string; // วันที่ปรับเปลี่ยนงบประมาณ
+  budgetAdjustmentNote?: string; // บันทึกเหตุผลการปรับเปลี่ยนงบประมาณ
 }
 
 export interface BudgetTransaction {

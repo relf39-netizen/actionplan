@@ -228,7 +228,8 @@ export function exportProjectProposalToWordDoc(
     </head>
     <body>
       <div class="Section1">
-        <h1>แบบเสนอโครงการตามแผนปฏิบัติการประจำปีงบประมาณ พ.ศ. ${fiscalYear.year}</h1>
+        <h1>โครงการ${proposal.projectName || ''}</h1>
+        <h2>ตามแผนปฏิบัติการประจำปีงบประมาณ พ.ศ. ${fiscalYear.year}</h2>
         <h2>${school.name} (${school.educationArea || school.affiliation})</h2>
 
         <p class="section-title">1. ชื่อโครงการ: <span style="font-weight: normal;">${proposal.projectName || ''}</span></p>
@@ -336,8 +337,151 @@ export function exportProjectProposalToWordDoc(
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  const safeTitle = (proposal.projectName || 'แบบเสนอโครงการ').replace(/[\/\\?%*:|"<>]/g, '_');
+  const safeTitle = (proposal.projectName || 'โครงการ').replace(/[\/\\?%*:|"<>]/g, '_');
   link.download = `${safeTitle}_ปี${fiscalYear.year}.doc`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * ส่งออกบันทึกรายการค่าใช้จ่ายโครงการเป็นไฟล์ Microsoft Word (.doc)
+ */
+export function exportProjectExpenseRecordToWordDoc(
+  project: Project,
+  school: School,
+  fiscalYear: FiscalYear
+) {
+  const items = project.expenseItems && project.expenseItems.length > 0
+    ? project.expenseItems
+    : (project.fullProposalDetails?.expenseItems || []);
+
+  const expenseRowsHtml = items.length > 0
+    ? items.map((item: any, idx: number) => `
+        <tr>
+          <td style="text-align: center;">${idx + 1}</td>
+          <td>${item.itemName}</td>
+          <td style="text-align: center;">${item.category || 'ค่าใช้สอย'}</td>
+          <td style="text-align: right;">${item.quantity.toLocaleString()}</td>
+          <td style="text-align: center;">${item.unit}</td>
+          <td style="text-align: right;">${item.unitPrice.toLocaleString()}</td>
+          <td style="text-align: right;">${item.totalAmount.toLocaleString()}</td>
+        </tr>
+      `).join('')
+    : `
+        <tr>
+          <td colspan="7" style="text-align: center; color: #666; padding: 12px;">ยังไม่มีรายการค่าใช้จ่ายย่อย</td>
+        </tr>
+      `;
+
+  const totalBudget = Number(project.allocatedBudget || 0);
+  const spentBudget = Number(project.spentBudget || 0);
+  const remainingBudget = Number(project.remainingBudget ?? (totalBudget - spentBudget));
+
+  const htmlContent = `
+    <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+    <head>
+      <meta charset="utf-8">
+      <title>บันทึกรายการค่าใช้จ่าย - ${project.projectName}</title>
+      <style>
+        @page Section1 {
+          size: 210mm 297mm;
+          margin: 25.4mm 25.4mm 25.4mm 25.4mm;
+        }
+        div.Section1 { page: Section1; }
+        body {
+          font-family: 'TH Sarabun PSK', 'TH Sarabun New', 'Sarabun', sans-serif;
+          font-size: 16pt;
+          line-height: 1.5;
+          color: #000000;
+        }
+        h1 { font-size: 18pt; font-weight: bold; text-align: center; margin-bottom: 4px; }
+        h2 { font-size: 16pt; font-weight: bold; text-align: center; margin-top: 0; margin-bottom: 18px; }
+        p { margin: 6px 0; text-align: justify; font-size: 16pt; }
+        .memo-header { font-weight: bold; font-size: 17pt; text-align: center; border-bottom: 2px solid #000; padding-bottom: 8px; margin-bottom: 16px; }
+        table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14pt; }
+        th { border: 1px solid #333; padding: 6px; background-color: #f2f2f2; text-align: center; font-weight: bold; }
+        td { border: 1px solid #333; padding: 6px; }
+      </style>
+    </head>
+    <body>
+      <div class="Section1">
+        <div class="memo-header">
+          บันทึกรายการค่าใช้จ่ายตามโครงการที่ได้รับอนุมัติ<br/>
+          แผนปฏิบัติการประจำปีงบประมาณ พ.ศ. ${fiscalYear.year}
+        </div>
+        <h2>${school.name} (${school.educationArea || school.affiliation})</h2>
+
+        <p><strong>โครงการ:</strong> ${project.projectName}</p>
+        <p><strong>รหัสโครงการ:</strong> ${project.projectCode} &nbsp;&nbsp;|&nbsp;&nbsp; <strong>กลุ่มงาน/ฝ่าย:</strong> ${project.department}</p>
+        <p><strong>ผู้รับผิดชอบโครงการ:</strong> ${project.responsiblePerson}</p>
+        <p><strong>ผู้อนุมัติโครงการ:</strong> ${project.approvedBy || school.directorName} &nbsp;&nbsp;|&nbsp;&nbsp; <strong>วันที่อนุมัติ:</strong> ${project.approvedDate || 'อนุมัติตามแผน'}</p>
+
+        <p style="margin-top: 14px; font-weight: bold;">สรุปวงเงินงบประมาณโครงการ:</p>
+        <p style="margin-left: 20px;">
+          - วงเงินงบประมาณที่ได้รับอนุมัติ: <strong>${totalBudget.toLocaleString()} บาท</strong><br/>
+          - งบประมาณที่เบิกจ่าย/ใช้ไปแล้ว: <strong>${spentBudget.toLocaleString()} บาท</strong><br/>
+          - งบประมาณคงเหลือ: <strong style="color: #059669;">${remainingBudget.toLocaleString()} บาท</strong>
+        </p>
+
+        <p style="margin-top: 14px; font-weight: bold;">รายละเอียดรายการค่าใช้จ่ายจำแนกตามหมวด (4 หมวด สพฐ.):</p>
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 6%;">ที่</th>
+              <th style="width: 38%;">รายการค่าใช้จ่าย</th>
+              <th style="width: 16%;">หมวดรายจ่าย</th>
+              <th style="width: 8%;">จำนวน</th>
+              <th style="width: 8%;">หน่วย</th>
+              <th style="width: 12%;">ราคา/หน่วย</th>
+              <th style="width: 12%;">รวมเงิน (บาท)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${expenseRowsHtml}
+            <tr style="font-weight: bold; background-color: #f9f9f9;">
+              <td colspan="6" style="border: 1px solid #333; padding: 6px; text-align: right;">รวมงบประมาณทั้งสิ้น</td>
+              <td style="border: 1px solid #333; padding: 6px; text-align: right;">${totalBudget.toLocaleString()}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <table style="width: 100%; border: none; margin-top: 40px; page-break-inside: avoid;">
+          <tr style="border: none;">
+            <td style="width: 33%; border: none; text-align: center; vertical-align: top; padding: 8px;">
+              <p>(ลงชื่อ)..........................................................</p>
+              <p>(${project.responsiblePerson})</p>
+              <p>ผู้รับผิดชอบโครงการ</p>
+              <p>วันที่ ...../...../.........</p>
+            </td>
+            <td style="width: 33%; border: none; text-align: center; vertical-align: top; padding: 8px;">
+              <p>(ลงชื่อ)..........................................................</p>
+              <p>(นายวางแผน รอบคอบ)</p>
+              <p>เจ้าหน้าที่แผนงานและงบประมาณ</p>
+              <p>วันที่ ...../...../.........</p>
+            </td>
+            <td style="width: 33%; border: none; text-align: center; vertical-align: top; padding: 8px;">
+              <p>(ลงชื่อ)..........................................................</p>
+              <p>(${school.directorName})</p>
+              <p>ผู้อำนวยการสถานศึกษา</p>
+              <p>วันที่ ...../...../.........</p>
+            </td>
+          </tr>
+        </table>
+      </div>
+    </body>
+    </html>
+  `;
+
+  const blob = new Blob(['\ufeff', htmlContent], {
+    type: 'application/msword;charset=utf-8',
+  });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  const safeTitle = (project.projectName || 'บันทึกค่าใช้จ่ายโครงการ').replace(/[\/\\?%*:|"<>]/g, '_');
+  link.download = `บันทึกค่าใช้จ่าย_${safeTitle}_${project.projectCode}.doc`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);

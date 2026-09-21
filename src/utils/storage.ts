@@ -39,7 +39,7 @@ export const cleanInitialSchool: School = {
   affiliation: 'สำนักงานคณะกรรมการการศึกษาขั้นพื้นฐาน (สพฐ.)',
   educationArea: 'สำนักงานเขตพื้นที่การศึกษาประถมศึกษาตัวอย่าง เขต 1',
   fiscalYear: 2568,
-  directorName: 'นายตัวอย่าง ผู้นำการศึกษา (ผู้อำนวยการโรงเรียน)',
+  directorName: 'ดร.พัฒนา ก้าวหน้า (ผู้อำนวยการโรงเรียน)',
   phone: '02-000-0000',
   email: 'dekreeandee_school@obec.mail.go.th',
   logoUrl: 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=160&auto=format&fit=crop&q=80',
@@ -71,7 +71,7 @@ export const cleanInitialUsers: User[] = [
     id: 1,
     username: 'admin',
     citizenId: '1100100123456',
-    fullName: 'นายผู้ดูแล แผนงานพัสดุ (ผู้ดูแลระบบโรงเรียน)',
+    fullName: 'นายวางแผน รอบคอบ (หัวหน้างานแผนงานและงบประมาณ)',
     email: 'admin@school.ac.th',
     role: 'admin',
     department: 'ฝ่ายบริหารงานงบประมาณ',
@@ -84,7 +84,7 @@ export const cleanInitialUsers: User[] = [
     id: 2,
     username: 'director',
     citizenId: '1200200234567',
-    fullName: 'นายตัวอย่าง ผู้นำการศึกษา (ผู้อำนวยการโรงเรียน)',
+    fullName: 'ดร.พัฒนา ก้าวหน้า (ผู้อำนวยการโรงเรียน)',
     email: 'director@school.ac.th',
     role: 'director',
     department: 'ฝ่ายบริหารทั่วไป',
@@ -97,11 +97,11 @@ export const cleanInitialUsers: User[] = [
     id: 3,
     username: 'teacher1',
     citizenId: '3100600345678',
-    fullName: 'นางสาวครูดี มีวิชา (ครูผู้รับผิดชอบโครงการ)',
+    fullName: 'ครูสอนดี เก่งมาก (ครูผู้รับผิดชอบโครงการ)',
     email: 'teacher1@school.ac.th',
     role: 'teacher',
     department: 'ฝ่ายบริหารงานวิชาการ',
-    position: 'ครูชำนาญการ / หัวหน้ากลุ่มสาระภาษาไทย',
+    position: 'ครูชำนาญการ / ผู้รับผิดชอบโครงการ',
     phone: '086-000-0003',
     schoolId: 1,
     isActive: true,
@@ -110,7 +110,7 @@ export const cleanInitialUsers: User[] = [
     id: 4,
     username: 'teacher2',
     citizenId: '3100600987654',
-    fullName: 'นายครูรัก นักกิจกรรม (ครูผู้รับผิดชอบโครงการ)',
+    fullName: 'นางสาวใฝ่เรียน รักเด็ก (ครูผู้รับผิดชอบโครงการ)',
     email: 'teacher2@school.ac.th',
     role: 'teacher',
     department: 'ฝ่ายบริหารงานทั่วไป',
@@ -378,10 +378,10 @@ export const cleanInitialProjects: Project[] = [
     durationEnd: '2025-03-31',
     location: 'โรงเรียนเด็กเรียนดี',
     targetGroup: 'นักเรียนชั้นอนุบาล 1 - ประถมศึกษาปีที่ 6',
-    responsiblePerson: 'นางสาวครูดี มีวิชา',
+    responsiblePerson: 'ครูสอนดี เก่งมาก',
     responsibleId: 3,
     proposerCitizenId: '3100600345678',
-    proposerName: 'นางสาวครูดี มีวิชา (ครูผู้รับผิดชอบโครงการ)',
+    proposerName: 'ครูสอนดี เก่งมาก (ครูผู้รับผิดชอบโครงการ)',
     department: 'ฝ่ายบริหารงานวิชาการ',
     budgetSource: 'เงินอุดหนุนรายหัว (ฝ่ายวิชาการ)',
     allocatedBudget: 35000,
@@ -426,6 +426,24 @@ export function loadDatabaseFromStorage(): AppDatabaseState {
       const parsed = JSON.parse(raw);
       // Validate that essential keys exist
       if (parsed.school && parsed.fiscalYears && parsed.users) {
+        // Upgrade legacy names to user's preferred teacher/director example names
+        if (parsed.school.directorName?.includes('นายตัวอย่าง')) {
+          parsed.school.directorName = 'ดร.พัฒนา ก้าวหน้า (ผู้อำนวยการโรงเรียน)';
+        }
+        if (Array.isArray(parsed.users)) {
+          parsed.users = parsed.users.map((u: User) => {
+            if (u.username === 'admin' && u.fullName.includes('ผู้ดูแล แผนงานพัสดุ')) {
+              return { ...u, fullName: 'นายวางแผน รอบคอบ (หัวหน้างานแผนงานและงบประมาณ)' };
+            }
+            if (u.username === 'director' && u.fullName.includes('นายตัวอย่าง')) {
+              return { ...u, fullName: 'ดร.พัฒนา ก้าวหน้า (ผู้อำนวยการโรงเรียน)' };
+            }
+            if (u.username === 'teacher1' && u.fullName.includes('ครูดี มีวิชา')) {
+              return { ...u, fullName: 'ครูสอนดี เก่งมาก (ครูผู้รับผิดชอบโครงการ)', position: 'ครูชำนาญการ / ผู้รับผิดชอบโครงการ' };
+            }
+            return u;
+          });
+        }
         return parsed;
       }
     }

@@ -474,7 +474,10 @@ export const AiProjectWriterView: React.FC<AiProjectWriterViewProps> = ({
 
   // Print / PDF preview
   const handlePrintPdf = () => {
-    window.print();
+    setActiveTab('preview');
+    setTimeout(() => {
+      window.print();
+    }, 150);
   };
 
   // Save to active projects list in the app
@@ -601,7 +604,7 @@ export const AiProjectWriterView: React.FC<AiProjectWriterViewProps> = ({
 
       {/* Proposal Window Banner */}
       {fiscalYear.isProposalOpen === false ? (
-        <div className="rounded-xl p-4 bg-rose-50 border border-rose-200 text-rose-900 flex items-start gap-3 shadow-xs">
+        <div className="no-print rounded-xl p-4 bg-rose-50 border border-rose-200 text-rose-900 flex items-start gap-3 shadow-xs">
           <Lock className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
           <div className="space-y-1">
             <div className="font-bold text-sm flex items-center gap-2">
@@ -621,7 +624,7 @@ export const AiProjectWriterView: React.FC<AiProjectWriterViewProps> = ({
           </div>
         </div>
       ) : (
-        <div className="rounded-xl p-3 bg-emerald-50/70 border border-emerald-200 text-emerald-900 flex items-center justify-between gap-3 shadow-xs">
+        <div className="no-print rounded-xl p-3 bg-emerald-50/70 border border-emerald-200 text-emerald-900 flex items-center justify-between gap-3 shadow-xs">
           <div className="flex items-center gap-2.5">
             <Unlock className="h-4 w-4 text-emerald-600 shrink-0" />
             <div className="text-xs">
@@ -750,7 +753,7 @@ export const AiProjectWriterView: React.FC<AiProjectWriterViewProps> = ({
 
       {/* TAB 1: FORM & AI PROMPT CONFIGURATION */}
       {activeTab === 'form' && (
-        <div className="space-y-6">
+        <div className="space-y-6 no-print">
           {/* Preset Topics Carousel / Badges */}
           <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4">
             <div className="flex items-center gap-2 mb-2.5">
@@ -1215,12 +1218,15 @@ export const AiProjectWriterView: React.FC<AiProjectWriterViewProps> = ({
             id="official-project-proposal-sheet"
             className="bg-white rounded-xl border border-slate-300 shadow-md p-8 md:p-12 text-slate-900 max-w-4xl mx-auto printable-proposal font-sans leading-relaxed"
           >
-            {/* Header / Seal */}
+            {/* Header / Official Project Title */}
             <div className="text-center border-b-2 border-slate-900 pb-4 mb-6">
-              <div className="text-base md:text-lg font-bold text-slate-950">
-                แบบเสนอโครงการตามแผนปฏิบัติการประจำปีงบประมาณ พ.ศ. {fiscalYear.year}
+              <div className="text-lg md:text-xl font-bold text-slate-950">
+                โครงการ{proposal.projectName}
               </div>
-              <div className="text-sm font-semibold text-slate-800 mt-1">
+              <div className="text-sm md:text-base font-semibold text-slate-800 mt-1">
+                ตามแผนปฏิบัติการประจำปีงบประมาณ พ.ศ. {fiscalYear.year}
+              </div>
+              <div className="text-sm font-semibold text-slate-800 mt-0.5">
                 {school.name}
               </div>
               <div className="text-xs text-slate-600">
@@ -1492,7 +1498,7 @@ export const AiProjectWriterView: React.FC<AiProjectWriterViewProps> = ({
 
       {/* TAB 3: INTERACTIVE EDITOR */}
       {activeTab === 'edit' && proposal && (
-        <div className="space-y-5 bg-white rounded-xl border border-slate-200 shadow-xs p-6">
+        <div className="space-y-5 bg-white rounded-xl border border-slate-200 shadow-xs p-6 no-print">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
               <Edit3 className="h-4 w-4 text-blue-600" />

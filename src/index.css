@@ -54,7 +54,7 @@
     margin: 2.5cm 2cm 2cm 2.5cm;
   }
 
-  .printable-proposal, #official-project-proposal-sheet, #proposal-document {
+  .printable-proposal, #official-project-proposal-sheet, #official-project-expense-sheet, #proposal-document {
     box-shadow: none !important;
     border: none !important;
     padding: 0 !important;
@@ -69,20 +69,21 @@
 
   .printable-proposal h1, .printable-proposal h2, .printable-proposal h3,
   #official-project-proposal-sheet h1, #official-project-proposal-sheet h2, #official-project-proposal-sheet h3,
-  .printable-proposal .official-heading, #official-project-proposal-sheet .official-heading {
+  #official-project-expense-sheet h1, #official-project-expense-sheet h2, #official-project-expense-sheet h3,
+  .printable-proposal .official-heading, #official-project-proposal-sheet .official-heading, #official-project-expense-sheet .official-heading {
     font-weight: 700 !important;
     color: #000000 !important;
   }
 
-  .printable-proposal table, #official-project-proposal-sheet table, #proposal-document table {
+  .printable-proposal table, #official-project-proposal-sheet table, #official-project-expense-sheet table, #proposal-document table {
     font-size: 14pt !important;
     border-color: #000000 !important;
   }
-  .printable-proposal th, #official-project-proposal-sheet th, #proposal-document th {
+  .printable-proposal th, #official-project-proposal-sheet th, #official-project-expense-sheet th, #proposal-document th {
     font-weight: 700 !important;
     border-color: #000000 !important;
   }
-  .printable-proposal td, #official-project-proposal-sheet td, #proposal-document td {
+  .printable-proposal td, #official-project-proposal-sheet td, #official-project-expense-sheet td, #proposal-document td {
     border-color: #000000 !important;
   }
 }

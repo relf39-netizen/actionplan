@@ -7,6 +7,7 @@ import {
   PieChart,
   Sparkles,
   FolderGit2,
+  CheckCircle2,
   FileSpreadsheet,
   Receipt,
   Target,
@@ -30,6 +31,7 @@ export type ActiveTab =
   | 'learner_activities'
   | 'ai_project_writer'
   | 'projects'
+  | 'approved_projects'
   | 'expenses'
   | 'disbursements'
   | 'action_plan'
@@ -47,6 +49,7 @@ interface SidebarProps {
   onLogout: () => void;
   currentUser: User;
   pendingCount?: number;
+  approvedCount?: number;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -58,6 +61,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onLogout,
   currentUser,
   pendingCount = 0,
+  approvedCount = 0,
 }) => {
   const menuItems: {
     id: ActiveTab;
@@ -72,7 +76,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'budget', label: '5. จัดสรรงบประมาณ', icon: PieChart },
     { id: 'learner_activities', label: '6. กิจกรรมพัฒนาผู้เรียน', icon: Sparkles },
     { id: 'ai_project_writer', label: '7. เขียนโครงการด้วย AI', icon: Bot, badge: 'AI สพฐ.' },
-    { id: 'projects', label: '8. โครงการ', icon: FolderGit2, badge: pendingCount > 0 ? `${pendingCount} รออนุมัติ` : undefined },
+    { id: 'projects', label: '8. แบบเสนอโครงการ', icon: FolderGit2, badge: pendingCount > 0 ? `${pendingCount} รออนุมัติ` : undefined },
+    { id: 'approved_projects', label: '8.1 โครงการที่อนุมัติแล้ว', icon: CheckCircle2, badge: approvedCount > 0 ? `${approvedCount}` : undefined },
     { id: 'expenses', label: '9. รายละเอียดงบโครงการ', icon: FileSpreadsheet },
     { id: 'disbursements', label: '10. การเบิกจ่าย / การใช้เงิน', icon: Receipt },
     { id: 'action_plan', label: '11. แผนปฏิบัติการประจำปี', icon: Target },
