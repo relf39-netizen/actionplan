@@ -49,6 +49,7 @@ interface AiProjectWriterViewProps {
   school: School;
   fiscalYear: FiscalYear;
   strategies?: Strategy[];
+  users?: User[];
   onSaveToProjects: (newProject: Project) => void;
   onNavigateToProjects: () => void;
 }
@@ -102,6 +103,7 @@ export const AiProjectWriterView: React.FC<AiProjectWriterViewProps> = ({
   school,
   fiscalYear,
   strategies = [],
+  users = [],
   onSaveToProjects,
   onNavigateToProjects,
 }) => {
@@ -116,9 +118,20 @@ export const AiProjectWriterView: React.FC<AiProjectWriterViewProps> = ({
   const [specialFocus, setSpecialFocus] = useState('');
   const [promptNotes, setPromptNotes] = useState('');
 
-  // Teacher Proposer states (Citizen ID submission)
+  // Signatories states (Proposer, Endorser, Approver)
   const [proposerName, setProposerName] = useState('');
+  const [proposerPosition, setProposerPosition] = useState('ครูผู้รับผิดชอบโครงการ');
   const [proposerCitizenId, setProposerCitizenId] = useState('');
+  const [selectedProposerId, setSelectedProposerId] = useState<string>('custom');
+
+  const [endorserName, setEndorserName] = useState('นายพิเชษฐ์ ปัญญาวงศ์');
+  const [endorserPosition, setEndorserPosition] = useState('หัวหน้ากลุ่มงานวิชาการ');
+  const [selectedEndorserId, setSelectedEndorserId] = useState<string>('custom');
+
+  const [approverName, setApproverName] = useState(school.directorName || 'ดร.สมศักดิ์ พัฒนศึกษา');
+  const [approverPosition, setApproverPosition] = useState(`ผู้อำนวยการโรงเรียน${school.name}`);
+  const [selectedApproverId, setSelectedApproverId] = useState<string>('custom');
+
   const [attachmentName, setAttachmentName] = useState('');
 
   // API Key states
@@ -148,6 +161,96 @@ export const AiProjectWriterView: React.FC<AiProjectWriterViewProps> = ({
         setHasSystemKey(false);
       });
   }, []);
+
+  // Initialize signatories from users if available
+  useEffect(() => {
+    if (users && users.length > 0) {
+      if (!proposerName) {
+        const teacher = users.find((u) => u.role === 'teacher') || users[0];
+        if (teacher) {
+          setProposerName(teacher.fullName);
+          setProposerPosition(teacher.position || 'ครูผู้รับผิดชอบโครงการ');
+          if (teacher.citizenId) setProposerCitizenId(teacher.citizenId);
+          setSelectedProposerId(String(teacher.id));
+        }
+      }
+
+      if (endorserName === 'นายพิเชษฐ์ ปัญญาวงศ์') {
+        const endorserUser = users.find((u) => u.role === 'admin' || (u.department && u.department.includes('วิชาการ'))) || (users.length > 1 ? users[1] : users[0]);
+        if (endorserUser) {
+          setEndorserName(endorserUser.fullName);
+          setEndorserPosition(endorserUser.position || `หัวหน้ากลุ่มงาน${endorserUser.department || 'วิชาการ'}`);
+          setSelectedEndorserId(String(endorserUser.id));
+        }
+      }
+
+      const director = users.find((u) => u.role === 'director');
+      if (director) {
+        setApproverName(director.fullName);
+        setApproverPosition(director.position || `ผู้อำนวยการโรงเรียน${school.name}`);
+        setSelectedApproverId(String(director.id));
+      } else if (school.directorName) {
+        setApproverName(school.directorName);
+        setApproverPosition(`ผู้อำนวยการโรงเรียน${school.name}`);
+      }
+    }
+  }, [users, school]);
+
+  const handleSelectProposer = (userIdStr: string) => {
+    setSelectedProposerId(userIdStr);
+    if (userIdStr === 'custom') return;
+    const u = users.find((usr) => String(usr.id) === userIdStr);
+    if (u) {
+      setProposerName(u.fullName);
+      setProposerPosition(u.position || (u.role === 'teacher' ? 'ครูผู้รับผิดชอบโครงการ' : 'เจ้าหน้าที่โครงการ'));
+      if (u.citizenId) setProposerCitizenId(u.citizenId);
+      if (proposal) {
+        setProposal({
+          ...proposal,
+          proposerName: u.fullName,
+          proposerPosition: u.position || 'ครูผู้รับผิดชอบโครงการ',
+          responsiblePerson: u.fullName,
+          position: u.position || 'ครูผู้รับผิดชอบโครงการ',
+        });
+      }
+    }
+  };
+
+  const handleSelectEndorser = (userIdStr: string) => {
+    setSelectedEndorserId(userIdStr);
+    if (userIdStr === 'custom') return;
+    const u = users.find((usr) => String(usr.id) === userIdStr);
+    if (u) {
+      const pos = u.position || (u.department ? `หัวหน้ากลุ่มงาน${u.department}` : `หัวหน้ากลุ่มงาน${department}`);
+      setEndorserName(u.fullName);
+      setEndorserPosition(pos);
+      if (proposal) {
+        setProposal({
+          ...proposal,
+          endorserName: u.fullName,
+          endorserPosition: pos,
+        });
+      }
+    }
+  };
+
+  const handleSelectApprover = (userIdStr: string) => {
+    setSelectedApproverId(userIdStr);
+    if (userIdStr === 'custom') return;
+    const u = users.find((usr) => String(usr.id) === userIdStr);
+    if (u) {
+      const pos = u.position || `ผู้อำนวยการโรงเรียน${school.name}`;
+      setApproverName(u.fullName);
+      setApproverPosition(pos);
+      if (proposal) {
+        setProposal({
+          ...proposal,
+          approverName: u.fullName,
+          approverPosition: pos,
+        });
+      }
+    }
+  };
 
   // Save custom API key
   const handleSaveApiKey = (keyVal: string) => {
@@ -202,12 +305,36 @@ export const AiProjectWriterView: React.FC<AiProjectWriterViewProps> = ({
           specialFocus,
           prompt: promptNotes,
           customApiKey: customApiKey || undefined,
+          proposerName: proposerName.trim() || undefined,
+          proposerPosition: proposerPosition.trim() || undefined,
+          endorserName: endorserName.trim() || undefined,
+          endorserPosition: endorserPosition.trim() || undefined,
+          approverName: approverName.trim() || undefined,
+          approverPosition: approverPosition.trim() || undefined,
         }),
       });
 
       const resData = await response.json();
       if (resData.success && resData.data) {
-        setProposal(resData.data);
+        const genData: ProjectProposal = resData.data;
+        // Synchronize selected/entered signatories into proposal
+        const pName = proposerName.trim() || genData.proposerName || genData.responsiblePerson || 'ครูผู้เสนอโครงการ';
+        const pPos = proposerPosition.trim() || genData.proposerPosition || genData.position || 'ครูผู้รับผิดชอบโครงการ';
+        const eName = endorserName.trim() || genData.endorserName || 'ผู้เห็นชอบโครงการ';
+        const ePos = endorserPosition.trim() || genData.endorserPosition || `หัวหน้ากลุ่มงาน${department}`;
+        const aName = approverName.trim() || genData.approverName || school.directorName || 'ผู้อำนวยการโรงเรียน';
+        const aPos = approverPosition.trim() || genData.approverPosition || `ผู้อำนวยการโรงเรียน${school.name}`;
+
+        genData.proposerName = pName;
+        genData.proposerPosition = pPos;
+        genData.responsiblePerson = pName;
+        genData.position = pPos;
+        genData.endorserName = eName;
+        genData.endorserPosition = ePos;
+        genData.approverName = aName;
+        genData.approverPosition = aPos;
+
+        setProposal(genData);
         setGenerationSource(resData.source);
         if (resData.message) {
           setGenerationMessage(resData.message);
@@ -386,7 +513,15 @@ export const AiProjectWriterView: React.FC<AiProjectWriterViewProps> = ({
       proposerName: finalTeacherName,
       proposerCitizenId: cleanCitizenId || undefined,
       attachmentName: attachmentName.trim() || undefined,
-      fullProposalDetails: proposal,
+      fullProposalDetails: {
+        ...proposal,
+        proposerName: finalTeacherName,
+        proposerPosition: proposerPosition || proposal.proposerPosition || proposal.position || 'ครูผู้รับผิดชอบโครงการ',
+        endorserName: endorserName || proposal.endorserName || 'ผู้เห็นชอบโครงการ',
+        endorserPosition: endorserPosition || proposal.endorserPosition || `หัวหน้ากลุ่มงาน${proposal.department}`,
+        approverName: approverName || proposal.approverName || school.directorName || 'ผู้อำนวยการโรงเรียน',
+        approverPosition: approverPosition || proposal.approverPosition || `ผู้อำนวยการโรงเรียน${school.name}`,
+      },
       department: proposal.department || 'ฝ่ายวิชาการ',
       budgetSource: proposal.budgetSource || 'เงินอุดหนุนรายหัว สพฐ.',
       allocatedBudget: proposal.totalBudget,
@@ -790,59 +925,217 @@ export const AiProjectWriterView: React.FC<AiProjectWriterViewProps> = ({
                 />
               </div>
 
-              {/* Teacher Proposer Information Card */}
-              <div className="md:col-span-2 bg-gradient-to-r from-blue-50/80 to-indigo-50/80 border border-blue-200 rounded-xl p-4 space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+              {/* 3-Part Signatories Configuration Card */}
+              <div className="md:col-span-2 bg-gradient-to-r from-blue-50/90 to-indigo-50/90 border border-blue-200 rounded-xl p-5 space-y-4 shadow-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 pb-2 border-b border-blue-100">
                   <div className="flex items-center gap-2">
-                    <UserCheck className="h-4 w-4 text-blue-700" />
-                    <span className="text-xs font-bold text-blue-950">
-                      ข้อมูลครูผู้เสนอโครงการ (Teacher Proposer Identification)
-                    </span>
+                    <UserCheck className="h-5 w-5 text-blue-700" />
+                    <div>
+                      <span className="text-xs font-bold text-blue-950 block">
+                        กำหนดผู้ลงนามโครงการ 3 ส่วน (Signatory Management)
+                      </span>
+                      <span className="text-[11px] text-slate-500">
+                        เลือกรายชื่อจากระบบของโรงเรียน หรือพิมพ์กำหนดเองตามโครงสร้างคณะกรรมการ
+                      </span>
+                    </div>
                   </div>
-                  <span className="text-[10px] text-blue-700 bg-white px-2.5 py-0.5 rounded-full border border-blue-200 font-medium">
-                    ยืนยันตัวตนด้วยเลขบัตรประชาชน 13 หลัก
+                  <span className="text-[10px] text-blue-800 bg-white px-3 py-1 rounded-full border border-blue-200 font-semibold self-start sm:self-auto">
+                    ผู้เสนอ (ซ้าย) • ผู้เห็นชอบ (ขวา) • ผู้อนุมัติ (ล่าง)
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      ชื่อ-สกุล ครูผู้เสนอโครงการ <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={proposerName}
-                      onChange={(e) => setProposerName(e.target.value)}
-                      placeholder="เช่น ครูสมชาย ใจดี"
-                      className="w-full text-xs rounded-lg border border-slate-300 bg-white py-2 px-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Signatory 1: Proposer */}
+                  <div className="bg-white p-3.5 rounded-lg border border-blue-100 shadow-xs space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                        <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-700 inline-flex items-center justify-center text-[10px] font-bold">1</span>
+                        ผู้เสนอโครงการ
+                      </span>
+                      <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 px-2 py-0.5 rounded">คอลัมน์ซ้าย</span>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-medium text-slate-600 mb-1">
+                        เลือกจากบุคลากรในระบบ:
+                      </label>
+                      <select
+                        value={selectedProposerId}
+                        onChange={(e) => handleSelectProposer(e.target.value)}
+                        className="w-full text-xs rounded border border-slate-300 bg-slate-50 py-1.5 px-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      >
+                        <option value="custom">— พิมพ์ระบุเอง —</option>
+                        {users.map((u) => (
+                          <option key={u.id} value={String(u.id)}>
+                            {u.fullName} ({u.position || u.role})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-medium text-slate-700 mb-0.5">
+                        ชื่อ-สกุล ผู้เสนอ <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={proposerName}
+                        onChange={(e) => {
+                          setProposerName(e.target.value);
+                          if (selectedProposerId !== 'custom') setSelectedProposerId('custom');
+                        }}
+                        placeholder="เช่น นางสาวกนกพร ใจมั่น"
+                        className="w-full text-xs rounded border border-slate-300 py-1.5 px-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-medium text-slate-700 mb-0.5">
+                        ตำแหน่งผู้เสนอ
+                      </label>
+                      <input
+                        type="text"
+                        value={proposerPosition}
+                        onChange={(e) => setProposerPosition(e.target.value)}
+                        placeholder="เช่น ครูผู้รับผิดชอบโครงการ"
+                        className="w-full text-xs rounded border border-slate-300 py-1.5 px-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-medium text-slate-700 mb-0.5">
+                        เลขบัตรประชาชน 13 หลัก (ถ้ามี)
+                      </label>
+                      <input
+                        type="text"
+                        maxLength={13}
+                        value={proposerCitizenId}
+                        onChange={(e) => setProposerCitizenId(e.target.value.replace(/\D/g, ''))}
+                        placeholder="เลข 13 หลัก"
+                        className="w-full text-xs font-mono font-bold rounded border border-slate-300 py-1.5 px-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      />
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      เลขประจำตัวประชาชน 13 หลัก ของครูผู้เสนอ <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      maxLength={13}
-                      value={proposerCitizenId}
-                      onChange={(e) => setProposerCitizenId(e.target.value.replace(/\D/g, ''))}
-                      placeholder="เช่น 1234567890123"
-                      className="w-full text-xs font-mono font-bold rounded-lg border border-slate-300 bg-white py-2 px-3 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    />
-                    <div className="text-[10px] mt-1 flex items-center justify-between">
-                      <span className="font-mono text-slate-600">
-                        {proposerCitizenId ? formatCitizenId(proposerCitizenId) : 'ระบุเลขบัตรประชาชน 13 หลัก'}
+                  {/* Signatory 2: Endorser */}
+                  <div className="bg-white p-3.5 rounded-lg border border-blue-100 shadow-xs space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                        <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 inline-flex items-center justify-center text-[10px] font-bold">2</span>
+                        ผู้เห็นชอบโครงการ
                       </span>
-                      <span className={proposerCitizenId.length === 13 ? 'text-emerald-700 font-bold' : 'text-amber-600'}>
-                        {proposerCitizenId.length === 13 ? '✓ ครบ 13 หลัก' : `(${proposerCitizenId.length}/13)`}
+                      <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">คอลัมน์ขวา</span>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-medium text-slate-600 mb-1">
+                        เลือกจากบุคลากรในระบบ:
+                      </label>
+                      <select
+                        value={selectedEndorserId}
+                        onChange={(e) => handleSelectEndorser(e.target.value)}
+                        className="w-full text-xs rounded border border-slate-300 bg-slate-50 py-1.5 px-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      >
+                        <option value="custom">— พิมพ์ระบุเอง —</option>
+                        {users.map((u) => (
+                          <option key={u.id} value={String(u.id)}>
+                            {u.fullName} ({u.position || u.role})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-medium text-slate-700 mb-0.5">
+                        ชื่อ-สกุล ผู้เห็นชอบ <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={endorserName}
+                        onChange={(e) => {
+                          setEndorserName(e.target.value);
+                          if (selectedEndorserId !== 'custom') setSelectedEndorserId('custom');
+                        }}
+                        placeholder="เช่น นายพิเชษฐ์ ปัญญาวงศ์"
+                        className="w-full text-xs rounded border border-slate-300 py-1.5 px-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-medium text-slate-700 mb-0.5">
+                        ตำแหน่งผู้เห็นชอบ
+                      </label>
+                      <input
+                        type="text"
+                        value={endorserPosition}
+                        onChange={(e) => setEndorserPosition(e.target.value)}
+                        placeholder="เช่น หัวหน้ากลุ่มงานวิชาการ"
+                        className="w-full text-xs rounded border border-slate-300 py-1.5 px-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Signatory 3: Approver */}
+                  <div className="bg-white p-3.5 rounded-lg border border-blue-100 shadow-xs space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                        <span className="w-5 h-5 rounded-full bg-purple-100 text-purple-700 inline-flex items-center justify-center text-[10px] font-bold">3</span>
+                        ผู้อนุมัติโครงการ
                       </span>
+                      <span className="text-[10px] font-semibold text-purple-700 bg-purple-50 px-2 py-0.5 rounded">แถวล่างสุด</span>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-medium text-slate-600 mb-1">
+                        เลือกจากบุคลากรในระบบ:
+                      </label>
+                      <select
+                        value={selectedApproverId}
+                        onChange={(e) => handleSelectApprover(e.target.value)}
+                        className="w-full text-xs rounded border border-slate-300 bg-slate-50 py-1.5 px-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      >
+                        <option value="custom">— พิมพ์ระบุเอง —</option>
+                        {users.map((u) => (
+                          <option key={u.id} value={String(u.id)}>
+                            {u.fullName} ({u.position || u.role})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-medium text-slate-700 mb-0.5">
+                        ชื่อ-สกุล ผู้อนุมัติ <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={approverName}
+                        onChange={(e) => {
+                          setApproverName(e.target.value);
+                          if (selectedApproverId !== 'custom') setSelectedApproverId('custom');
+                        }}
+                        placeholder="เช่น ดร.สมศักดิ์ พัฒนศึกษา"
+                        className="w-full text-xs rounded border border-slate-300 py-1.5 px-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-medium text-slate-700 mb-0.5">
+                        ตำแหน่งผู้อนุมัติ
+                      </label>
+                      <input
+                        type="text"
+                        value={approverPosition}
+                        onChange={(e) => setApproverPosition(e.target.value)}
+                        placeholder={`เช่น ผู้อำนวยการโรงเรียน${school.name}`}
+                        className="w-full text-xs rounded border border-slate-300 py-1.5 px-2.5 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                      />
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-[11px] font-semibold text-slate-700 mb-1">
                     เอกสารแนบโครงการ / ลิงก์ไฟล์ประกอบ (ถ้ามี)
                   </label>
                   <input
@@ -1144,39 +1437,51 @@ export const AiProjectWriterView: React.FC<AiProjectWriterViewProps> = ({
                 </ul>
               </div>
 
-              {/* Signature Blocks */}
-              <div className="pt-8 border-t border-slate-300 mt-8">
-                <div className="grid grid-cols-2 gap-8 text-center text-xs">
+              {/* Signature Blocks (3 parts: 2 columns top, 1 row bottom) */}
+              <div className="pt-8 border-t-2 border-slate-400 mt-8 font-sarabun text-sm md:text-base">
+                <div className="grid grid-cols-2 gap-8 text-center">
+                  {/* Left Column: Proposer */}
                   <div className="space-y-1.5">
-                    <p>ลงชื่อ.......................................................... ผู้เสนอโครงการ</p>
-                    <p className="font-semibold">({proposerName || proposal.responsiblePerson})</p>
+                    <p className="font-medium">ลงชื่อ.......................................................... ผู้เสนอโครงการ</p>
+                    <p className="font-bold text-slate-950">
+                      ({proposal.proposerName || proposerName || proposal.responsiblePerson || 'ครูผู้เสนอโครงการ'})
+                    </p>
                     {proposerCitizenId ? (
-                      <p className="text-slate-600 font-mono text-[11px]">เลขประจำตัวประชาชน: {formatCitizenId(proposerCitizenId)}</p>
+                      <p className="text-slate-600 font-mono text-xs">เลขประจำตัวประชาชน: {formatCitizenId(proposerCitizenId)}</p>
                     ) : (
-                      <p className="text-slate-500">เลขประจำตัวประชาชน: ........................................</p>
+                      <p className="text-slate-500 text-xs">เลขประจำตัวประชาชน: ........................................</p>
                     )}
-                    <p className="text-slate-600">ตำแหน่ง {proposal.position || 'ครูผู้รับผิดชอบโครงการ'}</p>
-                    <p className="text-slate-400">วันที่ ..... เดือน .................... พ.ศ. .........</p>
+                    <p className="text-slate-700">ตำแหน่ง {proposal.proposerPosition || proposerPosition || proposal.position || 'ครูผู้รับผิดชอบโครงการ'}</p>
+                    <p className="text-slate-500 text-xs">วันที่ ..... เดือน .................... พ.ศ. .........</p>
                   </div>
+
+                  {/* Right Column: Endorser */}
                   <div className="space-y-1.5">
-                    <p>ลงชื่อ.......................................................... ผู้เห็นชอบโครงการ</p>
-                    <p className="font-semibold">(..........................................................)</p>
-                    <p className="text-slate-600">ตำแหน่ง หัวหน้ากลุ่มงาน{proposal.department}</p>
-                    <p className="text-slate-400">วันที่ ..... เดือน .................... พ.ศ. .........</p>
+                    <p className="font-medium">ลงชื่อ.......................................................... ผู้เห็นชอบโครงการ</p>
+                    <p className="font-bold text-slate-950">
+                      ({proposal.endorserName || endorserName || 'ผู้เห็นชอบโครงการ'})
+                    </p>
+                    <p className="text-slate-700">ตำแหน่ง {proposal.endorserPosition || endorserPosition || `หัวหน้ากลุ่มงาน${proposal.department || 'วิชาการ'}`}</p>
+                    <p className="text-slate-500 text-xs">วันที่ ..... เดือน .................... พ.ศ. .........</p>
                   </div>
                 </div>
 
-                <div className="mt-8 text-center text-xs border-t border-dashed border-slate-300 pt-6">
+                {/* Bottom Row: Approver (School Director) */}
+                <div className="mt-8 text-center border-t border-dashed border-slate-300 pt-6">
                   <p className="font-bold text-slate-900 mb-2">คำอนุมัติของผู้อำนวยการสถานศึกษา</p>
-                  <p className="space-x-8 text-slate-700">
+                  <p className="space-x-8 text-slate-700 text-xs my-2">
                     <span>[ &nbsp; ] อนุมัติ</span>
                     <span>[ &nbsp; ] ไม่อนุมัติ เนื่องจาก ..............................................................</span>
                   </p>
-                  <div className="mt-6 space-y-1.5">
-                    <p>ลงชื่อ.......................................................... ผู้อนุมัติโครงการ</p>
-                    <p className="font-bold text-slate-900">({school.directorName})</p>
-                    <p className="text-slate-600">ผู้อำนวยการโรงเรียน{school.name}</p>
-                    <p className="text-slate-400">วันที่ ..... เดือน .................... พ.ศ. .........</p>
+                  <div className="mt-4 space-y-1.5">
+                    <p className="font-medium">ลงชื่อ.......................................................... ผู้อนุมัติโครงการ</p>
+                    <p className="font-bold text-slate-950">
+                      ({proposal.approverName || approverName || school.directorName || 'ผู้อำนวยการโรงเรียน'})
+                    </p>
+                    <p className="text-slate-700">
+                      ตำแหน่ง {proposal.approverPosition || approverPosition || `ผู้อำนวยการโรงเรียน${school.name}`}
+                    </p>
+                    <p className="text-slate-500 text-xs">วันที่ ..... เดือน .................... พ.ศ. .........</p>
                   </div>
                 </div>
               </div>
@@ -1518,15 +1823,200 @@ export const AiProjectWriterView: React.FC<AiProjectWriterViewProps> = ({
                 ))}
               </div>
             </div>
+
+            {/* 13. Signatories Editor Section (3 parts) */}
+            <div className="md:col-span-2 pt-4 border-t border-slate-200 mt-2">
+              <div className="flex items-center justify-between mb-3">
+                <label className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                  <UserCheck className="h-4 w-4 text-blue-600" />
+                  <span>13. ผู้ลงนามในแบบเสนอโครงการ (3 ส่วนตามระเบียบ สพฐ.)</span>
+                </label>
+                <span className="text-[11px] text-slate-500">
+                  แก้ไขหรือเลือกรายชื่อจากระบบของโรงเรียนเพื่อลงนาม
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                {/* Proposer */}
+                <div className="bg-white p-3 rounded-lg border border-slate-200 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-800 text-xs">1. ผู้เสนอโครงการ</span>
+                    <span className="text-[10px] text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded font-semibold">คอลัมน์ซ้าย</span>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] text-slate-500 mb-0.5">เลือกจากระบบ:</label>
+                    <select
+                      value={selectedProposerId}
+                      onChange={(e) => handleSelectProposer(e.target.value)}
+                      className="w-full text-xs rounded border border-slate-300 py-1 px-2 bg-slate-50"
+                    >
+                      <option value="custom">— พิมพ์เอง —</option>
+                      {users.map((u) => (
+                        <option key={u.id} value={String(u.id)}>
+                          {u.fullName} ({u.position || u.role})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-medium text-slate-700 mb-0.5">ชื่อ-สกุล:</label>
+                    <input
+                      type="text"
+                      value={proposal.proposerName || proposerName}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setProposerName(val);
+                        handleUpdateField('proposerName', val);
+                        handleUpdateField('responsiblePerson', val);
+                      }}
+                      className="w-full rounded border border-slate-300 py-1 px-2 text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-medium text-slate-700 mb-0.5">ตำแหน่ง:</label>
+                    <input
+                      type="text"
+                      value={proposal.proposerPosition || proposerPosition}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setProposerPosition(val);
+                        handleUpdateField('proposerPosition', val);
+                        handleUpdateField('position', val);
+                      }}
+                      className="w-full rounded border border-slate-300 py-1 px-2 text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-medium text-slate-700 mb-0.5">เลขบัตรประชาชน 13 หลัก:</label>
+                    <input
+                      type="text"
+                      maxLength={13}
+                      value={proposerCitizenId}
+                      onChange={(e) => setProposerCitizenId(e.target.value.replace(/\D/g, ''))}
+                      className="w-full font-mono rounded border border-slate-300 py-1 px-2 text-xs"
+                    />
+                  </div>
+                </div>
+
+                {/* Endorser */}
+                <div className="bg-white p-3 rounded-lg border border-slate-200 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-800 text-xs">2. ผู้เห็นชอบโครงการ</span>
+                    <span className="text-[10px] text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded font-semibold">คอลัมน์ขวา</span>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] text-slate-500 mb-0.5">เลือกจากระบบ:</label>
+                    <select
+                      value={selectedEndorserId}
+                      onChange={(e) => handleSelectEndorser(e.target.value)}
+                      className="w-full text-xs rounded border border-slate-300 py-1 px-2 bg-slate-50"
+                    >
+                      <option value="custom">— พิมพ์เอง —</option>
+                      {users.map((u) => (
+                        <option key={u.id} value={String(u.id)}>
+                          {u.fullName} ({u.position || u.role})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-medium text-slate-700 mb-0.5">ชื่อ-สกุล:</label>
+                    <input
+                      type="text"
+                      value={proposal.endorserName || endorserName}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setEndorserName(val);
+                        handleUpdateField('endorserName', val);
+                      }}
+                      className="w-full rounded border border-slate-300 py-1 px-2 text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-medium text-slate-700 mb-0.5">ตำแหน่ง:</label>
+                    <input
+                      type="text"
+                      value={proposal.endorserPosition || endorserPosition}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setEndorserPosition(val);
+                        handleUpdateField('endorserPosition', val);
+                      }}
+                      className="w-full rounded border border-slate-300 py-1 px-2 text-xs"
+                    />
+                  </div>
+                </div>
+
+                {/* Approver */}
+                <div className="bg-white p-3 rounded-lg border border-slate-200 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-800 text-xs">3. ผู้อนุมัติโครงการ</span>
+                    <span className="text-[10px] text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded font-semibold">แถวล่างสุด</span>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] text-slate-500 mb-0.5">เลือกจากระบบ:</label>
+                    <select
+                      value={selectedApproverId}
+                      onChange={(e) => handleSelectApprover(e.target.value)}
+                      className="w-full text-xs rounded border border-slate-300 py-1 px-2 bg-slate-50"
+                    >
+                      <option value="custom">— พิมพ์เอง —</option>
+                      {users.map((u) => (
+                        <option key={u.id} value={String(u.id)}>
+                          {u.fullName} ({u.position || u.role})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-medium text-slate-700 mb-0.5">ชื่อ-สกุล:</label>
+                    <input
+                      type="text"
+                      value={proposal.approverName || approverName}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setApproverName(val);
+                        handleUpdateField('approverName', val);
+                      }}
+                      className="w-full rounded border border-slate-300 py-1 px-2 text-xs"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-medium text-slate-700 mb-0.5">ตำแหน่ง:</label>
+                    <input
+                      type="text"
+                      value={proposal.approverPosition || approverPosition}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setApproverPosition(val);
+                        handleUpdateField('approverPosition', val);
+                      }}
+                      className="w-full rounded border border-slate-300 py-1 px-2 text-xs"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
             <button
               type="button"
               onClick={() => setActiveTab('preview')}
-              className="rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold px-5 py-2 transition-colors"
+              className="rounded-lg bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold px-5 py-2 transition-colors flex items-center gap-1.5 shadow-sm"
             >
-              ดูตัวอย่างแบบฟอร์มเสนอโครงการ &raquo;
+              <span>ดูตัวอย่างแบบฟอร์มเสนอโครงการ (Preview)</span>
+              <span>&raquo;</span>
             </button>
           </div>
         </div>

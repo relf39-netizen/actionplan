@@ -212,15 +212,15 @@ export function exportProjectProposalToWordDoc(
         }
         div.Section1 { page: Section1; }
         body {
-          font-family: 'TH Sarabun PSK', 'TH Sarabun New', 'Angsana New', 'Cordia New', sans-serif;
+          font-family: 'TH Sarabun PSK', 'TH Sarabun New', 'Sarabun', 'Angsana New', sans-serif;
           font-size: 16pt;
-          line-height: 1.3;
+          line-height: 1.5;
           color: #000000;
         }
-        h1 { font-size: 18pt; font-weight: bold; text-align: center; margin-bottom: 4px; }
-        h2 { font-size: 16pt; font-weight: bold; text-align: center; margin-top: 0; margin-bottom: 24px; }
-        p { margin: 6px 0; text-align: justify; }
-        .section-title { font-weight: bold; margin-top: 14px; margin-bottom: 4px; }
+        h1 { font-size: 18pt; font-weight: bold; text-align: center; margin-bottom: 4px; font-family: 'TH Sarabun PSK', 'TH Sarabun New', 'Sarabun', sans-serif; }
+        h2 { font-size: 16pt; font-weight: bold; text-align: center; margin-top: 0; margin-bottom: 24px; font-family: 'TH Sarabun PSK', 'TH Sarabun New', 'Sarabun', sans-serif; }
+        p { margin: 6px 0; text-align: justify; font-size: 16pt; }
+        .section-title { font-weight: bold; margin-top: 14px; margin-bottom: 4px; font-size: 16pt; }
         table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 14pt; }
         th { border: 1px solid #333; padding: 6px; background-color: #f2f2f2; text-align: center; font-weight: bold; }
         td { border: 1px solid #333; padding: 6px; }

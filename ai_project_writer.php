@@ -351,24 +351,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     </div>
                 </div>
 
-                <!-- 11. Official Signatures Section (3 columns) -->
-                <div class="pt-8 border-t border-slate-200 mt-6">
-                    <div class="grid grid-cols-3 gap-2 text-center text-[10px]">
-                        <div>
-                            <p class="mb-8">ลงชื่อ....................................................</p>
+                <!-- 11. Official Signatures Section (3 parts: 2 columns top, 1 bottom) -->
+                <div class="pt-8 border-t border-slate-300 mt-6 font-sarabun text-sm">
+                    <div class="grid grid-cols-2 gap-6 text-center">
+                        <div class="space-y-1">
+                            <p>ลงชื่อ.......................................................... ผู้เสนอโครงการ</p>
                             <p class="font-bold">(<span id="sign-resp">นางสาวกนกพร ใจมั่น</span>)</p>
-                            <p>ผู้เสนอโครงการ</p>
+                            <p class="text-slate-600 text-xs">ตำแหน่ง ครูผู้รับผิดชอบโครงการ</p>
+                            <p class="text-slate-400 text-xs">วันที่ ..... เดือน .................... พ.ศ. .........</p>
                         </div>
-                        <div>
-                            <p class="mb-8">ลงชื่อ....................................................</p>
+                        <div class="space-y-1">
+                            <p>ลงชื่อ.......................................................... ผู้เห็นชอบโครงการ</p>
                             <p class="font-bold">(นายพิเชษฐ์ ปัญญาวงศ์)</p>
-                            <p>หัวหน้างานแผนงานและงบประมาณ</p>
+                            <p class="text-slate-600 text-xs">ตำแหน่ง หัวหน้ากลุ่มงานแผนงานและงบประมาณ</p>
+                            <p class="text-slate-400 text-xs">วันที่ ..... เดือน .................... พ.ศ. .........</p>
                         </div>
-                        <div>
-                            <p class="mb-8">ลงชื่อ....................................................</p>
-                            <p class="font-bold">(ดร.สมศักดิ์ พัฒนศึกษา)</p>
-                            <p>ผู้อำนวยการโรงเรียน</p>
-                            <p class="text-[9px] text-slate-500 mt-1">[ &nbsp; ] อนุมัติ &nbsp;&nbsp; [ &nbsp; ] ไม่อนุมัติ</p>
+                    </div>
+                    <div class="mt-8 text-center border-t border-dashed border-slate-300 pt-6">
+                        <p class="font-bold text-slate-900 mb-2">คำอนุมัติของผู้อำนวยการสถานศึกษา</p>
+                        <p class="space-x-8 text-slate-700 text-xs my-2">
+                            <span>[ &nbsp; ] อนุมัติ</span>
+                            <span>[ &nbsp; ] ไม่อนุมัติ เนื่องจาก ..............................................................</span>
+                        </p>
+                        <div class="mt-4 space-y-1">
+                            <p>ลงชื่อ.......................................................... ผู้อนุมัติโครงการ</p>
+                            <p class="font-bold">(<?= htmlspecialchars($school['director_name'] ?? 'ดร.สมศักดิ์ พัฒนศึกษา') ?>)</p>
+                            <p class="text-slate-600 text-xs">ตำแหน่ง ผู้อำนวยการโรงเรียน<?= htmlspecialchars($school['name'] ?? '') ?></p>
+                            <p class="text-slate-400 text-xs">วันที่ ..... เดือน .................... พ.ศ. .........</p>
                         </div>
                     </div>
                 </div>

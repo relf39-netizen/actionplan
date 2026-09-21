@@ -6,12 +6,14 @@ interface StudentDataViewProps {
   students: StudentLevel[];
   activeFiscalYear: FiscalYear;
   onUpdateStudents: (updatedList: StudentLevel[]) => void;
+  onUpdateFiscalYear?: (updatedFy: FiscalYear) => void;
 }
 
 export const StudentDataView: React.FC<StudentDataViewProps> = ({
   students,
   activeFiscalYear,
   onUpdateStudents,
+  onUpdateFiscalYear,
 }) => {
   const [list, setList] = useState<StudentLevel[]>([...students]);
   const [savedSuccess, setSavedSuccess] = useState(false);
